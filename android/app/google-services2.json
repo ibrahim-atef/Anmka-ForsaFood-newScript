@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "730192250862",
+    "project_id": "foodie-efa8d",
+    "storage_bucket": "foodie-efa8d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:730192250862:android:73e8ef7b089089ff48f0ff",
+        "android_client_info": {
+          "package_name": "com.anmka.forsa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6Hf7LgtLpeMlfuz39aXuwt616dO1fjoE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,2 @@
+/Users/mrwan/Desktop/Anmka/Anmka-ForsaFood-newScript-1/android/app/.cxx/Debug/6l464z65/x86_64/CMakeFiles/edit_cache.dir
+/Users/mrwan/Desktop/Anmka/Anmka-ForsaFood-newScript-1/android/app/.cxx/Debug/6l464z65/x86_64/CMakeFiles/rebuild_cache.dir
