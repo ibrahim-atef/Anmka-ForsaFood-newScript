@@ -793,13 +793,13 @@ packages:
     source: hosted
     version: "0.7.3"
   google_api_headers:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
       name: google_api_headers
-      sha256: "1e76a8f21f10f51eef826c18616fcb24c9b5c607e1dc3757f2c81c594e9c6806"
+      sha256: "59ebb30d12fea5a77525b8e66cf3cec9593a9433dc0f0168497ebca1d3142311"
       url: "https://pub.dev"
     source: hosted
-    version: "4.3.2"
+    version: "2.0.3"
   google_identity_services_web:
     dependency: transitive
     description:

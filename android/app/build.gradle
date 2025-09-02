@@ -34,7 +34,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.anmka.forsa"
     compileSdk = 34
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "25.1.8937393"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17 // Use VERSION_17 for now
