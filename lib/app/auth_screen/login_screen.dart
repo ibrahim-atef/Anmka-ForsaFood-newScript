@@ -260,7 +260,7 @@ class LoginScreen extends StatelessWidget {
                                 SvgPicture.asset("assets/icons/ic_google.svg"),
                             isRight: false,
                             onPress: () async {
-                              // controller.loginWithGoogle();
+                               controller.loginWithGoogle();
                             },
                           ),
                         ),
@@ -281,7 +281,7 @@ class LoginScreen extends StatelessWidget {
                                       "assets/icons/ic_apple.svg"),
                                   isRight: false,
                                   onPress: () async {
-                                    // controller.loginWithApple();
+                           controller.loginWithApple();
                                   },
                                 ),
                               )

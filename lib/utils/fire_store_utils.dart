@@ -431,19 +431,24 @@ class FireStoreUtils {
   }
 
   static Future<List<ZoneModel>?> getZone() async {
+    print("🔍 FireStoreUtils: getZone() called");
     List<ZoneModel> airPortList = [];
     await fireStore
         .collection(CollectionName.zone)
         .where('publish', isEqualTo: true)
         .get()
         .then((value) {
+      print("🔍 FireStoreUtils: getZone() found ${value.docs.length} zones");
       for (var element in value.docs) {
         ZoneModel ariPortModel = ZoneModel.fromJson(element.data());
         airPortList.add(ariPortModel);
+        print("🔍 FireStoreUtils: Added zone: ${ariPortModel.name} (ID: ${ariPortModel.id})");
       }
     }).catchError((error) {
+      print("❌ FireStoreUtils: getZone() error: $error");
       log(error.toString());
     });
+    print("🔍 FireStoreUtils: getZone() returning ${airPortList.length} zones");
     return airPortList;
   }
 
@@ -709,10 +714,28 @@ class FireStoreUtils {
 
   static Stream<List<VendorModel>> getAllNearestRestaurantByCategoryId(
       {bool? isDining, required String categoryId}) async* {
+    print("🔍 FireStoreUtils: getAllNearestRestaurantByCategoryId called");
+    print("🔍 FireStoreUtils: categoryId = $categoryId");
+    print("🔍 FireStoreUtils: isDining = $isDining");
+    print("🔍 FireStoreUtils: Constant.selectedZone = ${Constant.selectedZone?.toJson()}");
+    print("🔍 FireStoreUtils: Constant.isZoneAvailable = ${Constant.isZoneAvailable}");
+    print("🔍 FireStoreUtils: Constant.selectedLocation = ${Constant.selectedLocation.toJson()}");
+    
     try {
+      if (Constant.selectedZone == null) {
+        print("❌ FireStoreUtils: selectedZone is null, cannot fetch restaurants");
+        getNearestVendorByCategoryController =
+            StreamController<List<VendorModel>>.broadcast();
+        getNearestVendorByCategoryController!.sink.add([]);
+        yield* getNearestVendorByCategoryController!.stream;
+        return;
+      }
+      
       getNearestVendorByCategoryController =
           StreamController<List<VendorModel>>.broadcast();
       List<VendorModel> vendorList = [];
+      
+      print("🔍 FireStoreUtils: Building query for zoneId: ${Constant.selectedZone!.id}");
       Query<Map<String, dynamic>> query = isDining == true
           ? fireStore
               .collection(CollectionName.vendors)
@@ -724,6 +747,14 @@ class FireStoreUtils {
               .where('zoneId', isEqualTo: Constant.selectedZone!.id.toString())
               .where('categoryID', isEqualTo: categoryId);
 
+      // التحقق من وجود الموقع المحدد
+      if (Constant.selectedLocation.location == null) {
+        print("❌ FireStoreUtils: selectedLocation.location is null, using default location");
+        getNearestVendorByCategoryController!.sink.add([]);
+        yield* getNearestVendorByCategoryController!.stream;
+        return;
+      }
+      
       GeoFirePoint center = Geoflutterfire().point(
           latitude: Constant.selectedLocation.location!.latitude ?? 0.0,
           longitude: Constant.selectedLocation.location!.longitude ?? 0.0);
@@ -738,12 +769,14 @@ class FireStoreUtils {
               strictMode: true);
 
       stream.listen((List<DocumentSnapshot> documentList) async {
+        print("🔍 FireStoreUtils: Received ${documentList.length} documents from stream");
         vendorList.clear();
         for (var document in documentList) {
-          print("document: $document");
+          print("🔍 FireStoreUtils: Processing document: ${document.id}");
           final data = document.data() as Map<String, dynamic>;
-          print("البيانات المستلمة: $data");
+          print("🔍 FireStoreUtils: Document data: $data");
           VendorModel vendorModel = VendorModel.fromJson(data);
+          print("🔍 FireStoreUtils: Parsed vendor: ${vendorModel.title}");
           if ((Constant.isSubscriptionModelApplied == true ||
                   Constant.adminCommission?.isEnabled == true) &&
               vendorModel.subscriptionPlan != null) {
@@ -765,12 +798,20 @@ class FireStoreUtils {
             vendorList.add(vendorModel);
           }
         }
+        print("🔍 FireStoreUtils: Final vendor list size: ${vendorList.length}");
         getNearestVendorByCategoryController!.sink.add(vendorList);
+      }).onError((error) {
+        print("❌ FireStoreUtils: Stream error: $error");
+        getNearestVendorByCategoryController!.sink.add([]);
       });
 
       yield* getNearestVendorByCategoryController!.stream;
     } catch (e) {
-      print(e);
+      print("❌ FireStoreUtils: getAllNearestRestaurantByCategoryId error: $e");
+      getNearestVendorByCategoryController =
+          StreamController<List<VendorModel>>.broadcast();
+      getNearestVendorByCategoryController!.sink.add([]);
+      yield* getNearestVendorByCategoryController!.stream;
     }
   }
 
@@ -965,43 +1006,52 @@ class FireStoreUtils {
 
   static Future<List<ProductModel>> getProductByVendorId(
       String vendorId) async {
+    print("🔍 FireStoreUtils: getProductByVendorId called for vendorId: $vendorId");
     String selectedFoodType = Preferences.getString(
         Preferences.foodDeliveryType,
         defaultValue: "TakeAway".tr);
+    print("🔍 FireStoreUtils: selectedFoodType = $selectedFoodType");
     List<ProductModel> list = [];
-    if (selectedFoodType == "TakeAway") {
-      await fireStore
-          .collection(CollectionName.vendorProducts)
-          .where("vendorID", isEqualTo: vendorId)
-          .where('publish', isEqualTo: true)
-          .orderBy("createdAt", descending: false)
-          .get()
-          .then((value) {
-        for (var element in value.docs) {
-          ProductModel productModel = ProductModel.fromJson(element.data());
+    
+    // جلب جميع المنتجات (منشورة وغير منشورة للتطوير)
+    print("🔍 FireStoreUtils: Querying for all products (including unpublished for development)");
+    await fireStore
+        .collection(CollectionName.vendorProducts)
+        .where("vendorID", isEqualTo: vendorId)
+        .orderBy("createdAt", descending: false)
+        .get()
+        .then((value) {
+      print("🔍 FireStoreUtils: Found ${value.docs.length} total products");
+      for (var element in value.docs) {
+        print("🔍 FireStoreUtils: Product data: ${element.data()}");
+        ProductModel productModel = ProductModel.fromJson(element.data());
+        
+        // فلترة المنتجات حسب نوع الطعام المحدد
+        if (selectedFoodType == "TakeAway") {
+          // للمطاعم TakeAway، نأخذ جميع المنتجات
           list.add(productModel);
+          print("🔍 FireStoreUtils: Added TakeAway product: ${productModel.name}, Photo: ${productModel.photo}");
+        } else {
+          // للمطاعم DineIn، نأخذ المنتجات التي تدعم DineIn أو المنتجات الخاصة
+          if (productModel.takeawayOption == false || 
+              productModel.takeawayOption == null ||
+              productModel.name == "Mystery Box" || 
+              productModel.name == "Gift Bag" ||
+              productModel.name == "Surprise Bag" ||
+              productModel.name == "Surprise bag") {
+            list.add(productModel);
+            print("🔍 FireStoreUtils: Added DineIn product: ${productModel.name}, Photo: ${productModel.photo}");
+          } else {
+            print("🔍 FireStoreUtils: Skipped TakeAway-only product: ${productModel.name}");
+          }
         }
-      }).catchError((error) {
-        log(error.toString());
-      });
-    } else {
-      await fireStore
-          .collection(CollectionName.vendorProducts)
-          .where("vendorID", isEqualTo: vendorId)
-          .where("takeawayOption", isEqualTo: false)
-          .where('publish', isEqualTo: true)
-          .orderBy("createdAt", descending: false)
-          .get()
-          .then((value) {
-        for (var element in value.docs) {
-          ProductModel productModel = ProductModel.fromJson(element.data());
-          list.add(productModel);
-        }
-      }).catchError((error) {
-        log(error.toString());
-      });
-    }
+      }
+    }).catchError((error) {
+      print("❌ FireStoreUtils: Error getting products: $error");
+      log(error.toString());
+    });
 
+    print("🔍 FireStoreUtils: Returning ${list.length} products for $selectedFoodType");
     return list;
   }
 

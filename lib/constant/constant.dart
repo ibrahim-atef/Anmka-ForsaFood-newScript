@@ -58,7 +58,7 @@ class Constant {
   static String driverRadios = "50";
   static String distanceType = "km";
 
-  static String placeholderImage = "";
+  static String placeholderImage = "https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/placeholder%2Frestaurant_placeholder.png?alt=media&token=restaurant_placeholder";
   static String googlePlayLink = "";
   static String appStoreLink = "";
   static String appVersion = "";

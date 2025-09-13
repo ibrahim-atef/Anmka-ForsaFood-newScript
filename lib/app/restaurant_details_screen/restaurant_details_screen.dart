@@ -50,16 +50,29 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
 
   @override
   void initState() {
-    // TODO: implement initState
+    print("🔍 RestaurantDetailsScreen: initState() called");
     super.initState();
 
-        final vendorId = Get.arguments["vendorId"] as String?;
-
-    if (vendorId == null || vendorId.isEmpty) {
-      print("❌ Vendor ID was not passed!");
-      return;
+    dynamic argumentData = Get.arguments;
+    print("🔍 RestaurantDetailsScreen: argumentData = $argumentData");
+    
+    if (argumentData != null) {
+      final vendorModel = argumentData["vendorModel"] as VendorModel?;
+      final vendorId = argumentData["vendorId"] as String?;
+      
+      print("🔍 RestaurantDetailsScreen: vendorModel = ${vendorModel?.toJson()}");
+      print("🔍 RestaurantDetailsScreen: vendorId = $vendorId");
+      print("🔍 RestaurantDetailsScreen: vendorModel photos = ${vendorModel?.photos}");
+      print("🔍 RestaurantDetailsScreen: vendorModel photo = ${vendorModel?.photo}");
+      
+      if (vendorModel == null) {
+        print("❌ RestaurantDetailsScreen: vendorModel is null!");
+      }
+      if (vendorId == null || vendorId.isEmpty) {
+        print("❌ RestaurantDetailsScreen: vendorId is null or empty!");
+      }
     } else {
-      print("❌ Vendor ID was  passed! ::: $vendorId");
+      print("❌ RestaurantDetailsScreen: argumentData is null!");
     }
   }
   @override
@@ -69,6 +82,10 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
         init: RestaurantDetailsController(),
         autoRemove: false,
         builder: (controller) {
+          print("🔍 RestaurantDetailsScreen: Building with isLoading=${controller.isLoading.value}");
+          print("🔍 RestaurantDetailsScreen: vendorModel = ${controller.vendorModel.value.toJson()}");
+          print("🔍 RestaurantDetailsScreen: productList length = ${controller.productList.length}");
+          print("🔍 RestaurantDetailsScreen: allProductList length = ${controller.allProductList.length}");
           return Scaffold(
             body: NestedScrollView(
               headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
@@ -154,11 +171,21 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                     flexibleSpace: FlexibleSpaceBar(
                       background: Stack(
                         children: [
-                          controller.vendorModel.value.photos == null || controller.vendorModel.value.photos!.isEmpty
+                          Builder(
+                            builder: (context) {
+                              print("🔍 RestaurantDetailsScreen: Checking photos - photos: ${controller.vendorModel.value.photos}, photo: ${controller.vendorModel.value.photo}");
+                              
+                              // استخدام صورة افتراضية إذا لم توجد صور
+                              String imageUrl = controller.vendorModel.value.photo?.toString() ?? 
+                                               (controller.vendorModel.value.photos?.isNotEmpty == true ? 
+                                                controller.vendorModel.value.photos!.first : 
+                                                Constant.placeholderImage);
+                              
+                              return controller.vendorModel.value.photos == null || controller.vendorModel.value.photos!.isEmpty
                               ? Stack(
                                   children: [
                                     NetworkImageWidget(
-                                      imageUrl: controller.vendorModel.value.photo.toString(),
+                                      imageUrl: imageUrl,
                                       fit: BoxFit.cover,
                                       width: Responsive.width(100, context),
                                       height: Responsive.height(40, context),
@@ -184,10 +211,11 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                   allowImplicitScrolling: true,
                                   itemBuilder: (BuildContext context, int index) {
                                     String image = controller.vendorModel.value.photos![index];
+                                    String imageUrl = image.isNotEmpty ? image : Constant.placeholderImage;
                                     return Stack(
                                       children: [
                                         NetworkImageWidget(
-                                          imageUrl: image.toString(),
+                                          imageUrl: imageUrl,
                                           fit: BoxFit.cover,
                                           width: Responsive.width(100, context),
                                           height: Responsive.height(40, context),
@@ -204,7 +232,9 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                       ],
                                     );
                                   },
-                                ),
+                                );
+                            },
+                          ),
                           Positioned(
                             bottom: 10,
                             right: 0,
@@ -365,8 +395,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                                   ),
                                                   Text(
                                                     Constant.calculateReview(
-                                                        reviewCount: controller.vendorModel.value.reviewsCount!.toStringAsFixed(0),
-                                                        reviewSum: controller.vendorModel.value.reviewsSum.toString()),
+                                                        reviewCount: (controller.vendorModel.value.reviewsCount ?? 0).toStringAsFixed(0),
+                                                        reviewSum: (controller.vendorModel.value.reviewsSum ?? 0).toString()),
                                                     style: TextStyle(
                                                       color: themeChange.getThem() ? AppThemeData.primary300 : AppThemeData.primary300,
                                                       fontFamily: AppThemeData.semiBold,
@@ -1179,7 +1209,7 @@ class ProductListView extends StatelessWidget {
                                       width: 5,
                                     ),
                                     Text(
-                                      "${Constant.calculateReview(reviewCount: productModel.reviewsCount!.toStringAsFixed(0), reviewSum: productModel.reviewsSum.toString())} (${productModel.reviewsCount!.toStringAsFixed(0)})",
+                                      "${Constant.calculateReview(reviewCount: (productModel.reviewsCount ?? 0).toStringAsFixed(0), reviewSum: (productModel.reviewsSum ?? 0).toString())} (${(productModel.reviewsCount ?? 0).toStringAsFixed(0)})",
                                       style: TextStyle(
                                         color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
                                         fontFamily: AppThemeData.regular,
@@ -1242,7 +1272,7 @@ class ProductListView extends StatelessWidget {
                             child: Stack(
                               children: [
                                 NetworkImageWidget(
-                                  imageUrl: productModel.photo.toString(),
+                                  imageUrl: productModel.photo?.toString() ?? Constant.placeholderImage,
                                   fit: BoxFit.cover,
                                   height: Responsive.height(16, context),
                                   width: Responsive.width(34, context),
@@ -1364,6 +1394,7 @@ class ProductListView extends StatelessWidget {
                                                         child: Row(
                                                           mainAxisAlignment: MainAxisAlignment.center,
                                                           crossAxisAlignment: CrossAxisAlignment.center,
+                                                          mainAxisSize: MainAxisSize.min,
                                                           children: [
                                                             InkWell(
                                                                 onTap: () {
@@ -1374,15 +1405,15 @@ class ProductListView extends StatelessWidget {
                                                                       isIncrement: false,
                                                                       quantity: cartItem.where((p0) => p0.id == productModel.id).first.quantity! - 1);
                                                                 },
-                                                                child: const Icon(Icons.remove)),
+                                                                child: const Icon(Icons.remove, size: 18)),
                                                             Padding(
-                                                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                                                              padding: const EdgeInsets.symmetric(horizontal: 8),
                                                               child: Text(
                                                                 cartItem.where((p0) => p0.id == productModel.id).first.quantity.toString(),
-                                                                textAlign: TextAlign.start,
+                                                                textAlign: TextAlign.center,
                                                                 maxLines: 1,
                                                                 style: TextStyle(
-                                                                  fontSize: 16,
+                                                                  fontSize: 14,
                                                                   overflow: TextOverflow.ellipsis,
                                                                   fontFamily: AppThemeData.medium,
                                                                   fontWeight: FontWeight.w500,
@@ -1404,7 +1435,7 @@ class ProductListView extends StatelessWidget {
                                                                     ShowToastDialog.showToast("Out of stock");
                                                                   }
                                                                 },
-                                                                child: const Icon(Icons.add)),
+                                                                child: const Icon(Icons.add, size: 18)),
                                                           ],
                                                         ),
                                                       )
@@ -1717,7 +1748,7 @@ class ProductDetailsView extends StatelessWidget {
                             child: Stack(
                               children: [
                                 NetworkImageWidget(
-                                  imageUrl: productModel.photo.toString(),
+                                  imageUrl: productModel.photo?.toString() ?? Constant.placeholderImage,
                                   height: Responsive.height(11, context),
                                   width: Responsive.width(22, context),
                                   fit: BoxFit.cover,

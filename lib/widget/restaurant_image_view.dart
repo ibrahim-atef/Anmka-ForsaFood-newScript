@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:customer/constant/constant.dart';
 import 'package:customer/models/vendor_model.dart';
 import 'package:customer/themes/responsive.dart';
 import 'package:customer/utils/network_image_widget.dart';
@@ -16,6 +17,7 @@ class RestaurantImageView extends StatefulWidget {
 
 class _RestaurantImageViewState extends State<RestaurantImageView> {
   int currentPage = 0;
+  Timer? _timer;
 
   PageController pageController = PageController(initialPage: 1);
 
@@ -25,23 +27,32 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
     super.initState();
   }
 
+  @override
+  void dispose() {
+    _timer?.cancel();
+    pageController.dispose();
+    super.dispose();
+  }
+
   void animateSlider() {
     if (widget.vendorModel.photos != null &&
         widget.vendorModel.photos!.isNotEmpty) {
       if (widget.vendorModel.photos!.length > 1) {
-        Timer.periodic(const Duration(seconds: 2), (Timer timer) {
-          if (currentPage < widget.vendorModel.photos!.length - 1) {
-            currentPage++;
-          } else {
-            currentPage = 0;
-          }
+        _timer = Timer.periodic(const Duration(seconds: 2), (Timer timer) {
+          if (mounted) {
+            if (currentPage < widget.vendorModel.photos!.length - 1) {
+              currentPage++;
+            } else {
+              currentPage = 0;
+            }
 
-          if (pageController.hasClients) {
-            pageController.animateToPage(
-              currentPage,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeIn,
-            );
+            if (pageController.hasClients) {
+              pageController.animateToPage(
+                currentPage,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeIn,
+              );
+            }
           }
         });
       }
@@ -55,7 +66,7 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
       child: widget.vendorModel.photos == null ||
               widget.vendorModel.photos!.isEmpty
           ? NetworkImageWidget(
-              imageUrl: widget.vendorModel.photo.toString(),
+              imageUrl: widget.vendorModel.photo?.toString() ?? Constant.placeholderImage,
               fit: BoxFit.cover,
               height: Responsive.height(20, context),
               width: Responsive.width(100, context),
@@ -70,8 +81,9 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
               pageSnapping: true,
               itemBuilder: (BuildContext context, int index) {
                 String image = widget.vendorModel.photos![index];
+                String imageUrl = image.isNotEmpty ? image : Constant.placeholderImage;
                 return NetworkImageWidget(
-                  imageUrl: image.toString(),
+                  imageUrl: imageUrl,
                   fit: BoxFit.cover,
                   height: Responsive.height(20, context),
                   width: Responsive.width(100, context),

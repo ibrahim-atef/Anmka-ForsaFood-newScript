@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:customer/app/auth_screen/signup_screen.dart';
 import 'package:customer/app/dash_board_screens/dash_board_screen.dart';
@@ -12,7 +13,7 @@ import 'package:customer/utils/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
-// import 'package:google_sign_in/google_sign_in.dart';
+  import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class LoginController extends GetxController {
@@ -44,7 +45,7 @@ class LoginController extends GetxController {
       }
       UserModel? userModel =
           await FireStoreUtils.getUserProfile(credential.user!.uid);
-      log("Login :: ${userModel?.toJson()}");
+      debugPrint("Login :: ${userModel?.toJson()}");
       if (userModel?.role == Constant.userRoleCustomer) {
         if (userModel?.active == true) {
           userModel?.fcmToken = await NotificationService.getToken();
@@ -88,79 +89,79 @@ class LoginController extends GetxController {
     ShowToastDialog.closeLoader();
   }
 
-  // loginWithGoogle() async {
-  //   ShowToastDialog.showLoader("please wait...".tr);
-  //   // await signInWithGoogle().then((value) async {
-  //     ShowToastDialog.closeLoader();
-  //     if (value != null) {
-  //       if (value.additionalUserInfo!.isNewUser) {
-  //         UserModel userModel = UserModel();
-  //         userModel.id = value.user!.uid;
-  //         userModel.email = value.user!.email;
-  //         userModel.firstName = value.user!.displayName?.split(' ').first;
-  //         userModel.lastName = value.user!.displayName?.split(' ').last;
-  //         userModel.provider = 'google';
+  loginWithGoogle() async {
+    ShowToastDialog.showLoader("please wait...".tr);
+    await signInWithGoogle().then((value) async {
+      ShowToastDialog.closeLoader();
+      if (value != null) {
+        if (value.additionalUserInfo!.isNewUser) {
+          UserModel userModel = UserModel();
+          userModel.id = value.user!.uid;
+          userModel.email = value.user!.email;
+          userModel.firstName = value.user!.displayName?.split(' ').first;
+          userModel.lastName = value.user!.displayName?.split(' ').last;
+          userModel.provider = 'google';
 
-  //         ShowToastDialog.closeLoader();
-  //         Get.off(const SignupScreen(), arguments: {
-  //           "userModel": userModel,
-  //           "type": "google",
-  //         });
-  //       } else {
-  //         await FireStoreUtils.userExistOrNot(value.user!.uid)
-  //             .then((userExit) async {
-  //           ShowToastDialog.closeLoader();
-  //           if (userExit == true) {
-  //             UserModel? userModel =
-  //                 await FireStoreUtils.getUserProfile(value.user!.uid);
-  //             if (userModel!.role == Constant.userRoleCustomer) {
-  //               if (userModel.active == true) {
-  //                 userModel.fcmToken = await NotificationService.getToken();
-  //                 await FireStoreUtils.updateUser(userModel);
-  //                 if (userModel.shippingAddress != null &&
-  //                     userModel.shippingAddress!.isNotEmpty) {
-  //                   if (userModel.shippingAddress!
-  //                       .where((element) => element.isDefault == true)
-  //                       .isNotEmpty) {
-  //                     Constant.selectedLocation = userModel.shippingAddress!
-  //                         .where((element) => element.isDefault == true)
-  //                         .single;
-  //                   } else {
-  //                     Constant.selectedLocation =
-  //                         userModel.shippingAddress!.first;
-  //                   }
-  //                   Get.offAll(const DashBoardScreen());
-  //                 } else {
-  //                   Get.offAll(const LocationPermissionScreen());
-  //                 }
-  //               } else {
-  //                 await FirebaseAuth.instance.signOut();
-  //                 ShowToastDialog.showToast(
-  //                     "This user is disable please contact to administrator"
-  //                         .tr);
-  //               }
-  //             } else {
-  //               await FirebaseAuth.instance.signOut();
-  //               // ShowToastDialog.showToast("This user is disable please contact to administrator".tr);
-  //             }
-  //           } else {
-  //             UserModel userModel = UserModel();
-  //             userModel.id = value.user!.uid;
-  //             userModel.email = value.user!.email;
-  //             userModel.firstName = value.user!.displayName?.split(' ').first;
-  //             userModel.lastName = value.user!.displayName?.split(' ').last;
-  //             userModel.provider = 'google';
+          ShowToastDialog.closeLoader();
+          Get.off(const SignupScreen(), arguments: {
+            "userModel": userModel,
+            "type": "google",
+          });
+        } else {
+          await FireStoreUtils.userExistOrNot(value.user!.uid)
+              .then((userExit) async {
+            ShowToastDialog.closeLoader();
+            if (userExit == true) {
+              UserModel? userModel =
+                  await FireStoreUtils.getUserProfile(value.user!.uid);
+              if (userModel!.role == Constant.userRoleCustomer) {
+                if (userModel.active == true) {
+                  userModel.fcmToken = await NotificationService.getToken();
+                  await FireStoreUtils.updateUser(userModel);
+                  if (userModel.shippingAddress != null &&
+                      userModel.shippingAddress!.isNotEmpty) {
+                    if (userModel.shippingAddress!
+                        .where((element) => element.isDefault == true)
+                        .isNotEmpty) {
+                      Constant.selectedLocation = userModel.shippingAddress!
+                          .where((element) => element.isDefault == true)
+                          .single;
+                    } else {
+                      Constant.selectedLocation =
+                          userModel.shippingAddress!.first;
+                    }
+                    Get.offAll(const DashBoardScreen());
+                  } else {
+                    Get.offAll(const LocationPermissionScreen());
+                  }
+                } else {
+                  await FirebaseAuth.instance.signOut();
+                  ShowToastDialog.showToast(
+                      "This user is disable please contact to administrator"
+                          .tr);
+                }
+              } else {
+                await FirebaseAuth.instance.signOut();
+                // ShowToastDialog.showToast("This user is disable please contact to administrator".tr);
+              }
+            } else {
+              UserModel userModel = UserModel();
+              userModel.id = value.user!.uid;
+              userModel.email = value.user!.email;
+              userModel.firstName = value.user!.displayName?.split(' ').first;
+              userModel.lastName = value.user!.displayName?.split(' ').last;
+              userModel.provider = 'google';
 
-  //             Get.off(const SignupScreen(), arguments: {
-  //               "userModel": userModel,
-  //               "type": "google",
-  //             });
-  //           }
-  //         });
-  //       }
-  //     }
-  //   });
-  // }
+              Get.off(const SignupScreen(), arguments: {
+                "userModel": userModel,
+                "type": "google",
+              });
+            }
+          });
+        }
+      }
+    });
+  }
 
   loginWithApple() async {
     ShowToastDialog.showLoader("please wait...".tr);
@@ -239,51 +240,57 @@ class LoginController extends GetxController {
     });
   }
 
-  // // Future<UserCredential?> signInWithGoogle() async {
-  //   try {
-  //     // محاولة تسجيل الدخول من Google
-  //     // final GoogleSignInAccount? googleUser = await GoogleSignIn(
-  //     //   scopes: ["profile", "email"],
-  //     // ).signIn().catchError((error) {
-  //     //   log("Google Sign-In Error: $error");
-  //     //   ShowToastDialog.closeLoader();
-  //     //   ShowToastDialog.showToast("something_went_wrong".tr);
-  //     //   return null;
-  //     // });
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      // محاولة تسجيل الدخول من Google
+      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+        scopes: ["profile", "email"],
+      ).signIn().catchError((error) {
+        debugPrint("Google Sign-In Error: $error");
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("something_went_wrong".tr);
+        return null;
+      });
 
-  //     // لو المستخدم لغى العملية
-  //     if (googleUser == null) {
-  //       ShowToastDialog.closeLoader();
-  //       ShowToastDialog.showToast("login_cancelled".tr);
-  //       return null;
-  //     }
+      // لو المستخدم لغى العملية
+      if (googleUser == null) {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("login_cancelled".tr);
+        return null;
+      }
 
-  //     // استخراج التوكين
-  //     // final GoogleSignInAuthentication googleAuth =
-  //     //     await googleUser.authentication;
+      // استخراج التوكين
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
-  //     // التحقق أن التوكينات غير null
-  //     // if (googleAuth.accessToken == null && googleAuth.idToken == null) {
-  //     //   ShowToastDialog.closeLoader();
-  //     //   ShowToastDialog.showToast("token_error".tr);
-  //     //   return null;
-  //     // }
+      // التحقق أن التوكينات غير null
+      if (googleAuth.accessToken == null && googleAuth.idToken == null) {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("token_error".tr);
+        return null;
+      }
 
-  //     // بناء credential من التوكينات
-  //     final credential = GoogleAuthProvider.credential(
-  //       accessToken: googleAuth.accessToken,
-  //       idToken: googleAuth.idToken,
-  //     );
+      // بناء credential من التوكينات
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-  //     // تسجيل الدخول في Firebase
-  //     return await FirebaseAuth.instance.signInWithCredential(credential);
-  //   } catch (e) {
-  //     ShowToastDialog.closeLoader();
-  //     debugPrint("Google Sign-In Error: ${e.toString()}");
-  //     ShowToastDialog.showToast("something_went_wrong".tr);
-  //     return null;
-  //   }
-  // }
+      // تسجيل الدخول في Firebase
+      return await FirebaseAuth.instance.signInWithCredential(credential);
+    } catch (e) {
+      ShowToastDialog.closeLoader();
+      debugPrint("Google Sign-In Error: ${e.toString()}");
+      ShowToastDialog.showToast("something_went_wrong".tr);
+      return null;
+    }
+  }
+
+  String generateNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
 
   String sha256ofString(String input) {
     final bytes = utf8.encode(input);

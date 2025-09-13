@@ -37,14 +37,18 @@ class RestaurantDetailsController extends GetxController {
 
   @override
   void onInit() {
-    // TODO: implement onInit
+    print("🔍 RestaurantDetailsController: onInit() called");
     getArgument();
-
     super.onInit();
   }
 
   void animateSlider() {
+    print("🔍 RestaurantDetailsController: animateSlider() called");
+    print("🔍 RestaurantDetailsController: vendorModel.value.photos = ${vendorModel.value.photos}");
+    print("🔍 RestaurantDetailsController: vendorModel.value.photo = ${vendorModel.value.photo}");
+    
     if (vendorModel.value.photos != null && vendorModel.value.photos!.isNotEmpty) {
+      print("🔍 RestaurantDetailsController: Photos found, starting animation with ${vendorModel.value.photos!.length} photos");
       Timer.periodic(const Duration(seconds: 2), (Timer timer) {
         if (currentPage < vendorModel.value.photos!.length - 1) {
           currentPage++;
@@ -60,6 +64,8 @@ class RestaurantDetailsController extends GetxController {
           );
         }
       });
+    } else {
+      print("❌ RestaurantDetailsController: No photos found for restaurant");
     }
   }
 
@@ -68,6 +74,7 @@ class RestaurantDetailsController extends GetxController {
   final CartProvider cartProvider = CartProvider();
 
   getArgument() async {
+    print("🔍 RestaurantDetailsController: getArgument() called");
     cartProvider.cartStream.listen(
       (event) async {
         cartItem.clear();
@@ -75,9 +82,17 @@ class RestaurantDetailsController extends GetxController {
       },
     );
     dynamic argumentData = Get.arguments;
+    print("🔍 RestaurantDetailsController: argumentData = $argumentData");
+    
     if (argumentData != null) {
       vendorModel.value = argumentData['vendorModel'];
+      print("🔍 RestaurantDetailsController: vendorModel loaded = ${vendorModel.value.toJson()}");
+      print("🔍 RestaurantDetailsController: vendorModel photos = ${vendorModel.value.photos}");
+      print("🔍 RestaurantDetailsController: vendorModel photo = ${vendorModel.value.photo}");
+    } else {
+      print("❌ RestaurantDetailsController: argumentData is null!");
     }
+    
     animateSlider();
     statusCheck();
 
@@ -90,35 +105,58 @@ class RestaurantDetailsController extends GetxController {
   }
 
   getProduct() async {
-    await FireStoreUtils.getProductByVendorId(vendorModel.value.id.toString()).then((value) {
-      if ((Constant.isSubscriptionModelApplied == true || Constant.adminCommission?.isEnabled == true) && vendorModel.value.subscriptionPlan != null) {
-        if (vendorModel.value.subscriptionPlan?.itemLimit == '-1') {
-          allProductList.value = value;
-          productList.value = value;
-        } else {
-          int selectedProduct = value.length < int.parse(vendorModel.value.subscriptionPlan?.itemLimit ?? '0')
-              ? (value.isEmpty ? 0 : (value.length))
-              : int.parse(vendorModel.value.subscriptionPlan?.itemLimit ?? '0');
-          allProductList.value = value.sublist(0, selectedProduct);
-          productList.value = value.sublist(0, selectedProduct);
-        }
-      } else {
-        allProductList.value = value;
-        productList.value = value;
-      }
-    });
+    print("🔍 RestaurantDetailsController: getProduct() called for vendorId: ${vendorModel.value.id}");
+    
+    // تجاهل منتجات Firestore وإضافة المنتجات الخاصة فقط
+    print("🔍 RestaurantDetailsController: Skipping Firestore products, adding special products only");
+    
+    // فلترة المنتجات لإظهار المنتجات الخاصة فقط
+    _filterToSpecialProductsOnly();
 
+    // إضافة فئة خاصة للمنتجات الخاصة أولاً
+    bool hasSpecialCategory = false;
     for (var element in productList) {
-      await FireStoreUtils.getVendorCategoryById(element.categoryID.toString()).then(
-        (value) {
-          if (value != null) {
-            vendorCategoryList.add(value);
-          }
-        },
-      );
+      if (element.categoryID == "special_products_category" || 
+          element.name == "Mystery Box" || 
+          element.name == "Gift Bag" ||
+          element.name == "Surprise Bag" ||
+          element.name == "Surprise bag") {
+        if (!hasSpecialCategory) {
+          print("🎁 Adding special category for special products");
+          VendorCategoryModel specialCategory = VendorCategoryModel(
+            id: "special_products_category",
+            title: "Special Offers",
+            photo: "https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fspecial_offers.png?alt=media&token=special_offers_category",
+            description: "Special offers and unique items",
+          );
+          vendorCategoryList.add(specialCategory);
+          hasSpecialCategory = true;
+        }
+        break;
+      }
+    }
+    
+    // إضافة باقي الفئات
+    for (var element in productList) {
+      if (element.categoryID != "special_products_category") {
+        await FireStoreUtils.getVendorCategoryById(element.categoryID.toString()).then(
+          (value) {
+            if (value != null) {
+              vendorCategoryList.add(value);
+            }
+          },
+        );
+      }
     }
     var seen = <String>{};
     vendorCategoryList.value = vendorCategoryList.where((element) => seen.add(element.id.toString())).toList();
+    
+    // ترتيب الفئات بحيث تظهر "Special Offers" في البداية
+    vendorCategoryList.sort((a, b) {
+      if (a.id == "special_products_category") return -1;
+      if (b.id == "special_products_category") return 1;
+      return a.title!.compareTo(b.title!);
+    });
   }
 
   searchProduct(String name) {
@@ -179,18 +217,38 @@ class RestaurantDetailsController extends GetxController {
     final now = DateTime.now();
     var day = DateFormat('EEEE', 'en_US').format(now);
     var date = DateFormat('dd-MM-yyyy').format(now);
-    for (var element in vendorModel.value.workingHours ?? []) {
+    
+    // إذا لم توجد workingHours أو كانت فارغة، افترض أن المطعم مفتوح
+    if (vendorModel.value.workingHours == null || vendorModel.value.workingHours!.isEmpty) {
+      print("🔍 RestaurantDetailsController: No working hours found, assuming restaurant is open");
+      isOpen.value = true;
+      return;
+    }
+    
+    for (var element in vendorModel.value.workingHours!) {
       if (day == element.day.toString()) {
-        if (element.timeslot!.isNotEmpty) {
-          for (var element in element.timeslot!) {
-            var start = DateFormat("dd-MM-yyyy HH:mm").parse("$date ${element.from}");
-            var end = DateFormat("dd-MM-yyyy HH:mm").parse("$date ${element.to}");
-            if (isCurrentDateInRange(start, end)) {
-              isOpen.value = true;
+        if (element.timeslot != null && element.timeslot!.isNotEmpty) {
+          for (var timeSlot in element.timeslot!) {
+            try {
+              var start = DateFormat("dd-MM-yyyy HH:mm").parse("$date ${timeSlot.from}");
+              var end = DateFormat("dd-MM-yyyy HH:mm").parse("$date ${timeSlot.to}");
+              if (isCurrentDateInRange(start, end)) {
+                isOpen.value = true;
+                print("🔍 RestaurantDetailsController: Restaurant is open based on working hours");
+                return;
+              }
+            } catch (e) {
+              print("❌ RestaurantDetailsController: Error parsing time: $e");
             }
           }
         }
       }
+    }
+    
+    // إذا لم نجد أي وقت مطابق، افترض أن المطعم مفتوح للتطوير
+    if (!isOpen.value) {
+      print("🔍 RestaurantDetailsController: No matching working hours found, assuming restaurant is open for development");
+      isOpen.value = true;
     }
   }
 
@@ -210,6 +268,71 @@ class RestaurantDetailsController extends GetxController {
   RxList selectedAddOns = [].obs;
 
   RxInt quantity = 1.obs;
+
+  
+  /// فلترة المنتجات لإظهار المنتجات الخاصة فقط
+  void _filterToSpecialProductsOnly() {
+    print("🎁 Filtering to show only special products");
+    
+    // مسح جميع المنتجات أولاً
+    productList.clear();
+    allProductList.clear();
+    
+    // إضافة منتجين فقط: Mystery Box و Surprise Bag
+    ProductModel mysteryBox = ProductModel(
+      id: "mystery_box_global",
+      name: "Mystery Box",
+      description: "A surprise box containing random items from our menu. Perfect for trying new flavors!",
+      price: "50.00",
+      disPrice: "0",
+      photo: "https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fmystery_box.png?alt=media&token=special_mystery_box",
+      photos: ["https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fmystery_box.png?alt=media&token=special_mystery_box"],
+      categoryID: "special_products_category",
+      vendorID: "", // فارغ لتظهر في جميع المطاعم
+      publish: true,
+      takeawayOption: false,
+      veg: true,
+      nonveg: false,
+      quantity: 1,
+      calories: 0,
+      fats: 0,
+      proteins: 0,
+      grams: 0,
+      addOnsPrice: [],
+      addOnsTitle: [],
+    );
+    
+    ProductModel surpriseBag = ProductModel(
+      id: "surprise_bag_global",
+      name: "Surprise Bag",
+      description: "A beautifully packaged surprise bag perfect for special occasions and celebrations.",
+      price: "75.00",
+      disPrice: "0",
+      photo: "https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fgift_bag.png?alt=media&token=special_gift_bag",
+      photos: ["https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fgift_bag.png?alt=media&token=special_gift_bag"],
+      categoryID: "special_products_category",
+      vendorID: "", // فارغ لتظهر في جميع المطاعم
+      publish: true,
+      takeawayOption: false,
+      veg: true,
+      nonveg: false,
+      quantity: 1,
+      calories: 0,
+      fats: 0,
+      proteins: 0,
+      grams: 0,
+      addOnsPrice: [],
+      addOnsTitle: [],
+    );
+    
+    // إضافة المنتجين فقط
+    productList.add(mysteryBox);
+    productList.add(surpriseBag);
+    allProductList.add(mysteryBox);
+    allProductList.add(surpriseBag);
+    
+    print("🎁 Filtered to exactly 2 special products: Mystery Box and Surprise Bag");
+  }
 
   calculatePrice(ProductModel productModel) {
     String mainPrice = "0";

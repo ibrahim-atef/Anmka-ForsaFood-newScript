@@ -39,7 +39,7 @@ class CategoryRestaurantScreen extends StatelessWidget {
                             VendorModel vendorModel = controller.allNearestRestaurant[index];
                             return InkWell(
                               onTap: () {
-                                Get.to(const RestaurantDetailsScreen(), arguments: {"vendorModel": vendorModel});
+                                Get.to(() => const RestaurantDetailsScreen(), arguments: {"vendorModel": vendorModel});
                               },
                               child: Padding(
                                 padding: const EdgeInsets.only(bottom: 20),
@@ -127,12 +127,12 @@ class CategoryRestaurantScreen extends StatelessWidget {
                                                           width: 5,
                                                         ),
                                                         Text(
-                                                          "${Constant.getDistance(
+                                                          "${Constant.selectedLocation.location != null ? Constant.getDistance(
                                                             lat1: vendorModel.latitude.toString(),
                                                             lng1: vendorModel.longitude.toString(),
                                                             lat2: Constant.selectedLocation.location!.latitude.toString(),
                                                             lng2: Constant.selectedLocation.location!.longitude.toString(),
-                                                          )} ${Constant.distanceType}",
+                                                          ) : "0.0"} ${Constant.distanceType}",
                                                           style: TextStyle(
                                                             color: themeChange.getThem() ? AppThemeData.secondary300 : AppThemeData.secondary300,
                                                             fontFamily: AppThemeData.semiBold,
