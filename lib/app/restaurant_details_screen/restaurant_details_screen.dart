@@ -1154,7 +1154,7 @@ class ProductListView extends StatelessWidget {
                                   height: 5,
                                 ),
                                 Text(
-                                  productModel.name.toString(),
+                                    productModel.name.toString()=="Gift Bag"?"Surprise Bag":       productModel.name.toString(),
                                   style: TextStyle(
                                     fontSize: 18,
                                     color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,

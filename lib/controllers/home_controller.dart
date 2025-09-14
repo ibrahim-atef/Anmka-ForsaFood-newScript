@@ -115,13 +115,18 @@ class HomeController extends GetxController {
 
       await FireStoreUtils.getStory().then((value) {
         storyList.clear();
+        
         for (var element1 in value) {
+          // البحث عن المطعم المقترن بالـ Story
           for (var element in allNearestRestaurant) {
             if (element1.vendorID == element.id) {
               storyList.add(element1);
+              break; // إضافة Story واحد فقط لكل مطعم
             }
           }
         }
+        
+        print("📱 Total active stories (within 24h): ${storyList.length}");
       });
     });
 

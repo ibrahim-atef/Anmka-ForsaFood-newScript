@@ -817,12 +817,23 @@ class FireStoreUtils {
 
   static Future<List<StoryModel>> getStory() async {
     List<StoryModel> storyList = [];
-    await fireStore.collection(CollectionName.story).get().then((value) {
+    DateTime now = DateTime.now();
+    DateTime twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
+    
+    await fireStore
+        .collection(CollectionName.story)
+        .where('createdAt', isGreaterThan: Timestamp.fromDate(twentyFourHoursAgo))
+        .orderBy('createdAt', descending: true)
+        .get()
+        .then((value) {
+      print("📱 FireStoreUtils: Found ${value.docs.length} stories within 24 hours");
       for (var element in value.docs) {
-        StoryModel walletTransactionModel = StoryModel.fromJson(element.data());
-        storyList.add(walletTransactionModel);
+        StoryModel storyModel = StoryModel.fromJson(element.data());
+        storyList.add(storyModel);
+        print("📱 Story: ${storyModel.vendorID} - ${storyModel.createdAt?.toDate()}");
       }
     }).catchError((error) {
+      print("❌ FireStoreUtils: Error getting stories: $error");
       log(error.toString());
     });
     return storyList;
@@ -1052,6 +1063,47 @@ class FireStoreUtils {
     });
 
     print("🔍 FireStoreUtils: Returning ${list.length} products for $selectedFoodType");
+    return list;
+  }
+
+  /// جلب المنتجات الخاصة من Firestore
+  static Future<List<ProductModel>> getSpecialProducts() async {
+    print("🎁 FireStoreUtils: getSpecialProducts called");
+    List<ProductModel> list = [];
+    
+    try {
+      // تبسيط الاستعلام لتجنب الحاجة لفهرس معقد
+      await fireStore
+          .collection(CollectionName.vendorProducts)
+          .where("isSpecialProduct", isEqualTo: true)
+          .get()
+          .then((value) {
+        print("🎁 FireStoreUtils: Found ${value.docs.length} special products");
+        for (var element in value.docs) {
+          print("🎁 FireStoreUtils: Special product data: ${element.data()}");
+          ProductModel productModel = ProductModel.fromJson(element.data());
+          
+          // فلترة محلية للمنتجات المطلوبة
+          if (productModel.categoryID == "special_products_category" && 
+              productModel.publish == true &&
+              (productModel.name == "Mystery Box" || 
+               productModel.name == "Gift Bag" || 
+               productModel.name == "Surprise Bag")) {
+            list.add(productModel);
+            print("🎁 FireStoreUtils: Added special product: ${productModel.name}, Price: ${productModel.price}, ID: ${productModel.id}");
+          } else {
+            print("🎁 FireStoreUtils: Skipped product: ${productModel.name} (doesn't match criteria)");
+          }
+        }
+      }).catchError((error) {
+        print("❌ FireStoreUtils: Error getting special products: $error");
+        log(error.toString());
+      });
+    } catch (e) {
+      print("❌ FireStoreUtils: Exception getting special products: $e");
+    }
+
+    print("🎁 FireStoreUtils: Returning ${list.length} special products");
     return list;
   }
 

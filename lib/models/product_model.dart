@@ -27,6 +27,9 @@ class ProductModel {
   String? categoryID;
   String? description;
   Timestamp? createdAt;
+  bool? isSpecialProduct;
+  int? purchaseLimit;
+  int? availabilityDuration;
 
   ProductModel({
     this.fats,
@@ -55,6 +58,9 @@ class ProductModel {
     this.categoryID,
     this.description,
     this.createdAt,
+    this.isSpecialProduct,
+    this.purchaseLimit,
+    this.availabilityDuration,
   });
 
   ProductModel.fromJson(Map<String, dynamic> json) {
@@ -84,6 +90,9 @@ class ProductModel {
     categoryID = json['categoryID'];
     description = json['description'];
     createdAt = json['createdAt'];
+    isSpecialProduct = json['isSpecialProduct'];
+    purchaseLimit = json['purchaseLimit'];
+    availabilityDuration = json['availability_duration'];
   }
 
   Map<String, dynamic> toJson() {
@@ -121,6 +130,9 @@ class ProductModel {
     data['categoryID'] = categoryID;
     data['description'] = description;
     data['createdAt'] = createdAt;
+    data['isSpecialProduct'] = isSpecialProduct;
+    data['purchaseLimit'] = purchaseLimit;
+    data['availability_duration'] = availabilityDuration;
     return data;
   }
 }

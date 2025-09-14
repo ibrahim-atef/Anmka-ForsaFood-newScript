@@ -16,6 +16,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
+import '../constant/show_toast_dialog.dart';
+import '../models/order_model.dart';
+
 class RestaurantDetailsController extends GetxController {
   Rx<TextEditingController> searchEditingController = TextEditingController().obs;
 
@@ -107,11 +110,9 @@ class RestaurantDetailsController extends GetxController {
   getProduct() async {
     print("🔍 RestaurantDetailsController: getProduct() called for vendorId: ${vendorModel.value.id}");
     
-    // تجاهل منتجات Firestore وإضافة المنتجات الخاصة فقط
-    print("🔍 RestaurantDetailsController: Skipping Firestore products, adding special products only");
-    
-    // فلترة المنتجات لإظهار المنتجات الخاصة فقط
-    _filterToSpecialProductsOnly();
+    // جلب المنتجات الخاصة من Firestore
+    print("🔍 RestaurantDetailsController: Fetching special products from Firestore");
+    await _fetchSpecialProductsFromFirestore();
 
     // إضافة فئة خاصة للمنتجات الخاصة أولاً
     bool hasSpecialCategory = false;
@@ -270,17 +271,54 @@ class RestaurantDetailsController extends GetxController {
   RxInt quantity = 1.obs;
 
   
-  /// فلترة المنتجات لإظهار المنتجات الخاصة فقط
-  void _filterToSpecialProductsOnly() {
-    print("🎁 Filtering to show only special products");
+  /// جلب المنتجات الخاصة من Firestore
+  Future<void> _fetchSpecialProductsFromFirestore() async {
+    print("🎁 Fetching special products from Firestore");
     
     // مسح جميع المنتجات أولاً
     productList.clear();
     allProductList.clear();
     
-    // إضافة منتجين فقط: Mystery Box و Surprise Bag
+    try {
+      // جلب المنتجات الخاصة من Firestore
+      List<ProductModel> specialProducts = await FireStoreUtils.getSpecialProducts();
+      
+      if (specialProducts.isNotEmpty) {
+        print("🎁 Found ${specialProducts.length} special products from Firestore");
+        
+        // فلترة المنتجات الخاصة فقط
+        List<ProductModel> filteredProducts = specialProducts.where((product) {
+          return product.isSpecialProduct == true && 
+                 product.categoryID == "special_products_category" &&
+                 (product.name == "Mystery Box" || product.name == "Gift Bag" || product.name == "Surprise Bag");
+        }).toList();
+        
+        // إضافة المنتجات المفلترة
+        productList.addAll(filteredProducts);
+        allProductList.addAll(filteredProducts);
+        
+        print("🎁 Added ${filteredProducts.length} filtered special products");
+        for (var product in filteredProducts) {
+          print("🎁 Product: ${product.name}, Price: ${product.price}, ID: ${product.id}");
+        }
+      } else {
+        print("❌ No special products found in Firestore, adding fallback products");
+        _addFallbackSpecialProducts();
+      }
+    } catch (e) {
+      print("❌ Error fetching special products from Firestore: $e");
+      print("🎁 Adding fallback products due to error");
+      _addFallbackSpecialProducts();
+    }
+  }
+
+  /// إضافة المنتجات الخاصة كـ fallback في حالة عدم وجودها في Firestore
+  void _addFallbackSpecialProducts() {
+    print("🎁 Adding fallback special products");
+    
+    // إضافة Mystery Box
     ProductModel mysteryBox = ProductModel(
-      id: "mystery_box_global",
+      id: "mystery_box_fallback",
       name: "Mystery Box",
       description: "A surprise box containing random items from our menu. Perfect for trying new flavors!",
       price: "50.00",
@@ -300,13 +338,17 @@ class RestaurantDetailsController extends GetxController {
       grams: 0,
       addOnsPrice: [],
       addOnsTitle: [],
+      isSpecialProduct: true,
+      purchaseLimit: 1,
+      availabilityDuration: 48,
     );
     
-    ProductModel surpriseBag = ProductModel(
-      id: "surprise_bag_global",
-      name: "Surprise Bag",
-      description: "A beautifully packaged surprise bag perfect for special occasions and celebrations.",
-      price: "75.00",
+    // إضافة Gift Bag
+    ProductModel giftBag = ProductModel(
+      id: "gift_bag_fallback",
+      name: "Gift Bag",
+      description: "A beautifully packaged gift bag perfect for special occasions and celebrations.",
+      price: "85.00",
       disPrice: "0",
       photo: "https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fgift_bag.png?alt=media&token=special_gift_bag",
       photos: ["https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fgift_bag.png?alt=media&token=special_gift_bag"],
@@ -323,15 +365,74 @@ class RestaurantDetailsController extends GetxController {
       grams: 0,
       addOnsPrice: [],
       addOnsTitle: [],
+      isSpecialProduct: true,
+      purchaseLimit: 1,
+      availabilityDuration: 48,
     );
     
-    // إضافة المنتجين فقط
+    // إضافة المنتجين
     productList.add(mysteryBox);
-    productList.add(surpriseBag);
+    productList.add(giftBag);
     allProductList.add(mysteryBox);
-    allProductList.add(surpriseBag);
+    allProductList.add(giftBag);
     
-    print("🎁 Filtered to exactly 2 special products: Mystery Box and Surprise Bag");
+    print("🎁 Added 2 fallback special products: Mystery Box and Gift Bag");
+  }
+
+  /// التحقق من إمكانية شراء المنتج الخاص (منع الطلب مرة أخرى لمدة 48 ساعة)
+  Future<bool> _canPurchaseSpecialProduct(ProductModel productModel) async {
+    if (Constant.userModel == null) return true;
+    
+    try {
+      // البحث عن آخر طلب للمنتج الخاص من هذا المستخدم
+      List<OrderModel> userOrders = await FireStoreUtils.getAllOrder();
+      
+      // فلترة الطلبات التي تحتوي على هذا المنتج الخاص
+      List<OrderModel> specialProductOrders = userOrders.where((order) {
+        if (order.products == null) return false;
+        
+        return order.products!.any((product) => 
+          product.id == productModel.id && 
+          product.name == productModel.name
+        );
+      }).toList();
+      
+      if (specialProductOrders.isEmpty) {
+        print("🎁 No previous orders found for special product: ${productModel.name}");
+        return true;
+      }
+      
+      // ترتيب الطلبات حسب التاريخ (الأحدث أولاً)
+      specialProductOrders.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
+      
+      OrderModel lastOrder = specialProductOrders.first;
+      DateTime lastOrderTime = lastOrder.createdAt!.toDate();
+      DateTime now = DateTime.now();
+      
+      // حساب الفرق بالدقائق
+      int differenceInMinutes = now.difference(lastOrderTime).inMinutes;
+      int hoursLimit = productModel.availabilityDuration ?? 48; // 48 ساعة افتراضياً
+      int minutesLimit = hoursLimit * 60;
+      
+      print("🎁 Last order for ${productModel.name}: ${lastOrderTime}");
+      print("🎁 Current time: $now");
+      print("🎁 Difference: $differenceInMinutes minutes");
+      print("🎁 Limit: $minutesLimit minutes");
+      
+      if (differenceInMinutes >= minutesLimit) {
+        print("🎁 Can purchase special product: ${productModel.name}");
+        return true;
+      } else {
+        int remainingMinutes = minutesLimit - differenceInMinutes;
+        int remainingHours = remainingMinutes ~/ 60;
+        int remainingMins = remainingMinutes % 60;
+        print("🎁 Cannot purchase special product: ${productModel.name}. Remaining time: ${remainingHours}h ${remainingMins}m");
+        return false;
+      }
+    } catch (e) {
+      print("❌ Error checking special product purchase limit: $e");
+      return true; // في حالة الخطأ، اسمح بالشراء
+    }
   }
 
   calculatePrice(ProductModel productModel) {
@@ -380,6 +481,14 @@ class RestaurantDetailsController extends GetxController {
     required int quantity,
     VariantInfo? variantInfo,
   }) async {
+    // التحقق من المنتجات الخاصة ومنع الطلب مرة أخرى لمدة 48 ساعة
+    if (productModel.isSpecialProduct == true) {
+      bool canPurchase = await _canPurchaseSpecialProduct(productModel);
+      if (!canPurchase) {
+        ShowToastDialog.showToast("You can only order this special product once every 48 hours");
+        return;
+      }
+    }
     CartProductModel cartProductModel = CartProductModel();
 
     String adOnsPrice = "0";

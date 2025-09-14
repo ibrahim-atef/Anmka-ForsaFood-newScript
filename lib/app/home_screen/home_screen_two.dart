@@ -1197,6 +1197,18 @@ class StoryView extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 itemBuilder: (context, index) {
                   StoryModel storyModel = controller.storyList[index];
+                  
+                  // التحقق من أن الـ Story لم يمض عليه أكثر من 24 ساعة
+                  if (storyModel.createdAt != null) {
+                    DateTime now = DateTime.now();
+                    DateTime twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
+                    DateTime storyDate = storyModel.createdAt!.toDate();
+                    
+                    if (storyDate.isBefore(twentyFourHoursAgo)) {
+                      return const SizedBox(); // إخفاء الـ Story المنتهي الصلاحية
+                    }
+                  }
+                  
                   return Padding(
                     padding: const EdgeInsets.only(right: 10),
                     child: InkWell(

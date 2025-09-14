@@ -36,6 +36,49 @@ class MoreStoriesState extends State<MoreStories> {
 
   @override
   Widget build(BuildContext context) {
+    // التحقق من أن الـ Story لم يمض عليه أكثر من 24 ساعة
+    if (widget.storyList[widget.index].createdAt != null) {
+      DateTime now = DateTime.now();
+      DateTime twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
+      DateTime storyDate = widget.storyList[widget.index].createdAt!.toDate();
+      
+      if (storyDate.isBefore(twentyFourHoursAgo)) {
+        // إرجاع شاشة فارغة إذا كان الـ Story منتهي الصلاحية
+        return Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.access_time, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  "This story has expired",
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Stories expire after 24 hours",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Go Back"),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+    }
+    
     return Scaffold(
       body: Stack(
         children: [
