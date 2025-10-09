@@ -1066,7 +1066,45 @@ class FireStoreUtils {
     return list;
   }
 
-  /// جلب المنتجات الخاصة من Firestore
+  /// جلب المنتجات الخاصة من Firestore حسب vendorID
+  static Future<List<ProductModel>> getSpecialProductsByVendorId(String vendorId) async {
+    print("🎁 FireStoreUtils: getSpecialProductsByVendorId called for: $vendorId");
+    List<ProductModel> list = [];
+    
+    try {
+      await fireStore
+          .collection(CollectionName.vendorProducts)
+          .where("vendorID", isEqualTo: vendorId)
+          .get()
+          .then((value) {
+        print("🎁 FireStoreUtils: Found ${value.docs.length} products for vendor $vendorId");
+        for (var element in value.docs) {
+          ProductModel productModel = ProductModel.fromJson(element.data());
+          
+          // فلترة محلية للمنتجات الخاصة فقط (التي تحتوي على special_type)
+          if (productModel.specialType != null && 
+              productModel.specialType!.isNotEmpty &&
+              (productModel.specialType == "surprise_bag" || 
+               productModel.specialType == "mystery_box")) {
+            list.add(productModel);
+            print("🎁 FireStoreUtils: Added special product: ${productModel.name}, Type: ${productModel.specialType}, Price: ${productModel.price}");
+          } else {
+            print("🔍 FireStoreUtils: Skipped regular product: ${productModel.name}");
+          }
+        }
+      }).catchError((error) {
+        print("❌ FireStoreUtils: Error getting special products: $error");
+        log(error.toString());
+      });
+    } catch (e) {
+      print("❌ FireStoreUtils: Exception getting special products: $e");
+    }
+
+    print("🎁 FireStoreUtils: Returning ${list.length} special products for vendor $vendorId");
+    return list;
+  }
+
+  /// جلب المنتجات الخاصة من Firestore (للاستخدام العام)
   static Future<List<ProductModel>> getSpecialProducts() async {
     print("🎁 FireStoreUtils: getSpecialProducts called");
     List<ProductModel> list = [];

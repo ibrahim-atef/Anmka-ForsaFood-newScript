@@ -271,113 +271,51 @@ class RestaurantDetailsController extends GetxController {
   RxInt quantity = 1.obs;
 
   
-  /// جلب المنتجات الخاصة من Firestore
+  /// جلب المنتجات الخاصة من Firestore حسب vendorID
   Future<void> _fetchSpecialProductsFromFirestore() async {
-    print("🎁 Fetching special products from Firestore");
+    print("🎁 Fetching special products from Firestore for vendor: ${vendorModel.value.id}");
     
     // مسح جميع المنتجات أولاً
     productList.clear();
     allProductList.clear();
     
     try {
-      // جلب المنتجات الخاصة من Firestore
-      List<ProductModel> specialProducts = await FireStoreUtils.getSpecialProducts();
+      // جلب المنتجات الخاصة من Firestore لهذا المطعم فقط
+      List<ProductModel> specialProducts = await FireStoreUtils.getSpecialProductsByVendorId(vendorModel.value.id!);
       
       if (specialProducts.isNotEmpty) {
-        print("🎁 Found ${specialProducts.length} special products from Firestore");
+        print("🎁 Found ${specialProducts.length} special products from Firestore for this vendor");
         
-        // فلترة المنتجات الخاصة فقط
+        // فلترة المنتجات الخاصة فقط (التي تحتوي على special_type)
         List<ProductModel> filteredProducts = specialProducts.where((product) {
-          return product.isSpecialProduct == true && 
-                 product.categoryID == "special_products_category" &&
-                 (product.name == "Mystery Box" || product.name == "Gift Bag" || product.name == "Surprise Bag");
+          bool isSpecial = product.specialType != null && 
+                          product.specialType!.isNotEmpty &&
+                          (product.specialType == "surprise_bag" || 
+                           product.specialType == "mystery_box");
+          
+          if (isSpecial) {
+            print("🎁 Found special product: ${product.name}, Type: ${product.specialType}, VendorID: ${product.vendorID}");
+          }
+          
+          return isSpecial;
         }).toList();
         
         // إضافة المنتجات المفلترة
         productList.addAll(filteredProducts);
         allProductList.addAll(filteredProducts);
         
-        print("🎁 Added ${filteredProducts.length} filtered special products");
+        print("🎁 Added ${filteredProducts.length} filtered special products for vendor ${vendorModel.value.id}");
         for (var product in filteredProducts) {
-          print("🎁 Product: ${product.name}, Price: ${product.price}, ID: ${product.id}");
+          print("🎁 Product: ${product.name}, Type: ${product.specialType}, Price: ${product.price}, ID: ${product.id}");
         }
       } else {
-        print("❌ No special products found in Firestore, adding fallback products");
-        _addFallbackSpecialProducts();
+        print("⚠️ No special products found in Firestore for vendor ${vendorModel.value.id}");
       }
     } catch (e) {
       print("❌ Error fetching special products from Firestore: $e");
-      print("🎁 Adding fallback products due to error");
-      _addFallbackSpecialProducts();
     }
   }
 
-  /// إضافة المنتجات الخاصة كـ fallback في حالة عدم وجودها في Firestore
-  void _addFallbackSpecialProducts() {
-    print("🎁 Adding fallback special products");
-    
-    // إضافة Mystery Box
-    ProductModel mysteryBox = ProductModel(
-      id: "mystery_box_fallback",
-      name: "Mystery Box",
-      description: "A surprise box containing random items from our menu. Perfect for trying new flavors!",
-      price: "50.00",
-      disPrice: "0",
-      photo: "https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fmystery_box.png?alt=media&token=special_mystery_box",
-      photos: ["https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fmystery_box.png?alt=media&token=special_mystery_box"],
-      categoryID: "special_products_category",
-      vendorID: "", // فارغ لتظهر في جميع المطاعم
-      publish: true,
-      takeawayOption: false,
-      veg: true,
-      nonveg: false,
-      quantity: 1,
-      calories: 0,
-      fats: 0,
-      proteins: 0,
-      grams: 0,
-      addOnsPrice: [],
-      addOnsTitle: [],
-      isSpecialProduct: true,
-      purchaseLimit: 1,
-      availabilityDuration: 48,
-    );
-    
-    // إضافة Gift Bag
-    ProductModel giftBag = ProductModel(
-      id: "gift_bag_fallback",
-      name: "Gift Bag",
-      description: "A beautifully packaged gift bag perfect for special occasions and celebrations.",
-      price: "85.00",
-      disPrice: "0",
-      photo: "https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fgift_bag.png?alt=media&token=special_gift_bag",
-      photos: ["https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fgift_bag.png?alt=media&token=special_gift_bag"],
-      categoryID: "special_products_category",
-      vendorID: "", // فارغ لتظهر في جميع المطاعم
-      publish: true,
-      takeawayOption: false,
-      veg: true,
-      nonveg: false,
-      quantity: 1,
-      calories: 0,
-      fats: 0,
-      proteins: 0,
-      grams: 0,
-      addOnsPrice: [],
-      addOnsTitle: [],
-      isSpecialProduct: true,
-      purchaseLimit: 1,
-      availabilityDuration: 48,
-    );
-    
-    // إضافة المنتجين
-    productList.add(mysteryBox);
-    productList.add(giftBag);
-    allProductList.add(mysteryBox);
-    allProductList.add(giftBag);
-    
-    print("🎁 Added 2 fallback special products: Mystery Box and Gift Bag");
-  }
 
   /// التحقق من إمكانية شراء المنتج الخاص (منع الطلب مرة أخرى لمدة 48 ساعة)
   Future<bool> _canPurchaseSpecialProduct(ProductModel productModel) async {

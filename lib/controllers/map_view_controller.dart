@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:customer/models/user_model.dart';
+import 'package:customer/models/vendor_model.dart';
 import 'package:flutter/services.dart';
 import 'package:customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:customer/constant/constant.dart';
@@ -10,6 +11,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:flutter_osm_plugin/flutter_osm_plugin.dart' as osmMap;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
 
 class MapViewController extends GetxController {
   GoogleMapController? mapController;
@@ -42,77 +44,216 @@ class MapViewController extends GetxController {
   }
 
   Future<void> updateMarkersWithinRadius() async {
-    if (currentLocation.value == null) return;
+    print("🗺️ Updating markers on map");
+    markers.clear();
 
-    markers.clear(); // Optional: clear previous markers if needed
+    int totalRestaurants = homeController.allNearestRestaurant.length;
+    print("🏪 Total restaurants to display: $totalRestaurants");
 
     for (var restaurant in homeController.allNearestRestaurant) {
-      final double distanceInMeters = Geolocator.distanceBetween(
-        currentLocation.value!.latitude,
-        currentLocation.value!.longitude,
-        restaurant.latitude!,
-        restaurant.longitude!,
-      );
-      Future<BitmapDescriptor> getCustomMarkerFromAsset(String path,
-          {int size = 100}) async {
-        final ByteData byteData = await rootBundle.load(path);
-        final codec = await ui.instantiateImageCodec(
-          byteData.buffer.asUint8List(),
-          targetWidth: size,
-          targetHeight: size,
-        );
-        final ui.FrameInfo frameInfo = await codec.getNextFrame();
-        final ui.Image originalImage = frameInfo.image;
+      try {
+        // إنشاء المؤشر المخصص للمطعم
+        final BitmapDescriptor customIcon = await _createRestaurantMarker(restaurant);
 
-        final recorder = ui.PictureRecorder();
-        final canvas = Canvas(recorder);
-        final Paint paint = Paint();
-        final Rect rect =
-            Rect.fromLTWH(0.0, 0.0, size.toDouble(), size.toDouble());
-
-        canvas.clipPath(Path()..addOval(rect));
-        canvas.drawImageRect(
-          originalImage,
-          Rect.fromLTWH(0, 0, originalImage.width.toDouble(),
-              originalImage.height.toDouble()),
-          rect,
-          paint,
-        );
-
-        final ui.Image circleImage =
-            await recorder.endRecording().toImage(size, size);
-        final ByteData? pngBytes =
-            await circleImage.toByteData(format: ui.ImageByteFormat.png);
-        final Uint8List data = pngBytes!.buffer.asUint8List();
-
-        return BitmapDescriptor.fromBytes(data);
-      }
-
-      final customIcon =
-          await getCustomMarkerFromAsset('assets/images/ic_logo.png');
-
-      if (distanceInMeters <= circleRadius.value) {
         final markerId = MarkerId(restaurant.id.toString());
+        
+        // حساب المسافة إذا كان الموقع الحالي متاح
+        String distanceText = "";
+        if (currentLocation.value != null) {
+          final double distanceInMeters = Geolocator.distanceBetween(
+            currentLocation.value!.latitude,
+            currentLocation.value!.longitude,
+            restaurant.latitude!,
+            restaurant.longitude!,
+          );
+          double distanceInKm = distanceInMeters / 1000;
+          distanceText = distanceInKm < 1 
+              ? "${distanceInMeters.toStringAsFixed(0)}m away"
+              : "${distanceInKm.toStringAsFixed(1)}km away";
+        }
+
+        // حساب التقييم
+        String rating = Constant.calculateReview(
+          reviewCount: restaurant.reviewsCount.toString(),
+          reviewSum: restaurant.reviewsSum.toString(),
+        );
 
         final marker = Marker(
           markerId: markerId,
           position: LatLng(restaurant.latitude!, restaurant.longitude!),
           infoWindow: InfoWindow(
-            title: restaurant.title,
-            snippet: restaurant.location,
+            title: restaurant.title ?? "Restaurant",
+            snippet: "$distanceText • ⭐ $rating • ${restaurant.location ?? ''}",
             onTap: () {
+              print("🏪 Opening restaurant: ${restaurant.title}");
               Get.to(
-                const RestaurantDetailsScreen(),
+                () => const RestaurantDetailsScreen(),
                 arguments: {"vendorModel": restaurant},
               );
             },
           ),
-          icon: customIcon, // Use fallback
+          icon: customIcon,
         );
 
         markers[markerId] = marker;
+        print("✅ Added marker for: ${restaurant.title}");
+      } catch (e) {
+        print("❌ Error creating marker for ${restaurant.title}: $e");
       }
     }
+
+    print("🗺️ Total markers added: ${markers.length}");
+    update();
+  }
+
+  /// إنشاء مؤشر مخصص جميل للمطعم
+  Future<BitmapDescriptor> _createRestaurantMarker(VendorModel restaurant) async {
+    try {
+      // محاولة تحميل صورة المطعم من الإنترنت
+      if (restaurant.photo != null && restaurant.photo!.isNotEmpty) {
+        try {
+          final response = await http.get(Uri.parse(restaurant.photo!)).timeout(
+            const Duration(seconds: 3),
+          );
+          
+          if (response.statusCode == 200) {
+            return await _createCircularMarkerWithImage(
+              response.bodyBytes,
+              size: 120,
+              borderColor: Colors.white,
+              borderWidth: 4,
+            );
+          }
+        } catch (e) {
+          print("⚠️ Could not load restaurant image: ${restaurant.title}, using fallback");
+        }
+      }
+
+      // استخدام الصورة الافتراضية
+      return await _createCircularMarkerFromAsset(
+        'assets/images/ic_logo.png',
+        size: 120,
+        borderColor: Colors.white,
+        borderWidth: 4,
+      );
+    } catch (e) {
+      print("❌ Error in _createRestaurantMarker: $e");
+      // الرجوع لمؤشر افتراضي بسيط
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+    }
+  }
+
+  /// إنشاء مؤشر دائري من صورة بايتات
+  Future<BitmapDescriptor> _createCircularMarkerWithImage(
+    Uint8List imageBytes, {
+    int size = 120,
+    Color borderColor = Colors.white,
+    double borderWidth = 4,
+  }) async {
+    final ui.Codec codec = await ui.instantiateImageCodec(
+      imageBytes,
+      targetWidth: size,
+      targetHeight: size,
+    );
+    final ui.FrameInfo frameInfo = await codec.getNextFrame();
+    final ui.Image image = frameInfo.image;
+
+    return await _createCircularMarkerFromImage(
+      image,
+      size: size,
+      borderColor: borderColor,
+      borderWidth: borderWidth,
+    );
+  }
+
+  /// إنشاء مؤشر دائري من صورة أصول
+  Future<BitmapDescriptor> _createCircularMarkerFromAsset(
+    String assetPath, {
+    int size = 120,
+    Color borderColor = Colors.white,
+    double borderWidth = 4,
+  }) async {
+    final ByteData byteData = await rootBundle.load(assetPath);
+    final ui.Codec codec = await ui.instantiateImageCodec(
+      byteData.buffer.asUint8List(),
+      targetWidth: size,
+      targetHeight: size,
+    );
+    final ui.FrameInfo frameInfo = await codec.getNextFrame();
+    final ui.Image image = frameInfo.image;
+
+    return await _createCircularMarkerFromImage(
+      image,
+      size: size,
+      borderColor: borderColor,
+      borderWidth: borderWidth,
+    );
+  }
+
+  /// إنشاء مؤشر دائري من صورة UI
+  Future<BitmapDescriptor> _createCircularMarkerFromImage(
+    ui.Image image, {
+    int size = 120,
+    Color borderColor = Colors.white,
+    double borderWidth = 4,
+  }) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final paint = Paint()..isAntiAlias = true;
+
+    // رسم الظل
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.3)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    
+    canvas.drawCircle(
+      Offset(size / 2, size / 2 + 2),
+      (size / 2) - borderWidth,
+      shadowPaint,
+    );
+
+    // رسم الحدود البيضاء
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(
+      Offset(size / 2, size / 2),
+      (size / 2),
+      borderPaint,
+    );
+
+    // قص الدائرة للصورة
+    final clipPath = Path()
+      ..addOval(Rect.fromCircle(
+        center: Offset(size / 2, size / 2),
+        radius: (size / 2) - borderWidth,
+      ));
+    
+    canvas.clipPath(clipPath);
+
+    // رسم الصورة داخل الدائرة
+    final srcRect = Rect.fromLTWH(
+      0,
+      0,
+      image.width.toDouble(),
+      image.height.toDouble(),
+    );
+    final dstRect = Rect.fromLTWH(
+      borderWidth,
+      borderWidth,
+      size.toDouble() - (borderWidth * 2),
+      size.toDouble() - (borderWidth * 2),
+    );
+    
+    canvas.drawImageRect(image, srcRect, dstRect, paint);
+
+    final picture = recorder.endRecording();
+    final finalImage = await picture.toImage(size, size);
+    final byteData = await finalImage.toByteData(format: ui.ImageByteFormat.png);
+    final uint8List = byteData!.buffer.asUint8List();
+
+    return BitmapDescriptor.fromBytes(uint8List);
   }
 
   void updateCircleLocation(double lat, double lng) {
@@ -165,22 +306,13 @@ class MapViewController extends GetxController {
   }
 
   addMarkerSetup() async {
+    print("🗺️ Setting up markers");
     if (Constant.selectedMapType == "osm") {
       departureOsmIcon = Image.asset("assets/images/map_selected.png",
           width: 30, height: 30); //OSM
     } else {
-      final Uint8List parking = await Constant()
-          .getBytesFromAsset("assets/images/map_selected.png", 20);
-      parkingMarker = BitmapDescriptor.bytes(parking);
-      for (var element in homeController.allNearestRestaurant) {
-        addMarker(
-            latitude: element.latitude,
-            longitude: element.longitude,
-            id: element.id.toString(),
-            rotation: 0,
-            descriptor: parkingMarker!,
-            title: element.title.toString());
-      }
+      print("🏪 Adding ${homeController.allNearestRestaurant.length} restaurants to map");
+      await updateMarkersWithinRadius();
     }
   }
 

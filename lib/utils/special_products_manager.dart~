@@ -1,0 +1,385 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:customer/constant/constant.dart';
+import 'package:customer/constant/collection_name.dart';
+import 'package:customer/models/product_model.dart';
+import 'package:customer/models/vendor_category_model.dart';
+import 'package:customer/utils/fire_store_utils.dart';
+import 'package:flutter/material.dart';
+
+class SpecialProductsManager {
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  /// إنشاء فئة خاصة للمنتجات الخاصة
+  static Future<void> createSpecialProductsCategory() async {
+    try {
+      print("🎁 Creating special products category...");
+      
+      final specialCategoryData = {
+        'id': 'special_products_category',
+        'title': 'Special Offers',
+        'photo': 'https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fspecial_offers.png?alt=media&token=special_offers_category',
+        'publish': true,
+        'show_in_homepage': true,
+        'createdAt': FieldValue.serverTimestamp(),
+        'description': 'Special offers and unique items',
+      };
+      
+      await _firestore
+          .collection(CollectionName.vendorCategories)
+          .doc('special_products_category')
+          .set(specialCategoryData);
+      
+      print("✅ Special products category created successfully");
+      
+    } catch (e) {
+      print("❌ Error creating special products category: $e");
+    }
+  }
+  
+  /// إضافة منتجين خاصين لجميع المطاعم
+  static Future<void> addSpecialProductsToAllStores() async {
+    try {
+      print("🚀 Starting to add special products to all stores...");
+      
+      // إنشاء الفئة الخاصة أولاً
+      await createSpecialProductsCategory();
+      
+      // جلب جميع المطاعم
+      final restaurants = await _firestore
+          .collection(CollectionName.vendors)
+          .get();
+      
+      print("📊 Found ${restaurants.docs.length} restaurants");
+      
+      int successCount = 0;
+      int errorCount = 0;
+      
+      for (var restaurantDoc in restaurants.docs) {
+        try {
+          final restaurantId = restaurantDoc.id;
+          final restaurantData = restaurantDoc.data();
+          
+          print("🏪 Processing restaurant: ${restaurantData['title']} (ID: $restaurantId)");
+          
+          // إضافة Mystery Box
+          await _addMysteryBox(restaurantId);
+          
+          // إضافة Gift Bag
+          await _addGiftBag(restaurantId);
+          
+          successCount++;
+          print("✅ Successfully added special products to restaurant: ${restaurantData['title']}");
+          
+        } catch (e) {
+          errorCount++;
+          print("❌ Error adding special products to restaurant ${restaurantDoc.id}: $e");
+        }
+      }
+      
+      print("🎉 Special products addition completed!");
+      print("✅ Successfully processed: $successCount restaurants");
+      print("❌ Errors: $errorCount restaurants");
+      
+    } catch (e) {
+      print("💥 Fatal error in addSpecialProductsToAllStores: $e");
+    }
+  }
+  
+  /// إضافة Mystery Box للمطعم
+  static Future<void> _addMysteryBox(String restaurantId) async {
+    final mysteryBoxData = {
+      'addOnsPrice': <String>[],
+      'addOnsTitle': <String>[],
+      'availability_duration': 24,
+      'calories': 0,
+      'categoryID': 'special_products_category', // فئة خاصة للمنتجات الخاصة
+      'createdAt': FieldValue.serverTimestamp(),
+      'description': 'A surprise box containing random items from our menu. Perfect for trying new flavors!',
+      'disPrice': '0',
+      'fats': 0,
+      'grams': 0,
+      'id': 'mystery_box_${restaurantId}',
+      'item_attribute': null,
+      'name': 'Mystery Box',
+      'nonveg': false,
+      'photo': 'https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fmystery_box.png?alt=media&token=special_mystery_box',
+      'photos': <String>[
+        'https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fmystery_box.png?alt=media&token=special_mystery_box'
+      ],
+      'price': '50.00',
+      'product_specification': <String, String>{
+        'Type': 'Surprise Box',
+        'Contents': 'Random menu items',
+        'Suitable for': 'Adventure seekers',
+        'Purchase Limit': 'One per customer'
+      },
+      'proteins': 0,
+      'publish': true, // منشور
+      'quantity': 1, // يمكن شراؤه مرة واحدة فقط
+      'takeawayOption': true,
+      'veg': true,
+      'vendorID': restaurantId,
+      'reviewsCount': 0,
+      'reviewsSum': 0.0,
+      'isSpecialProduct': true, // علامة للمنتج الخاص
+      'purchaseLimit': 1, // حد الشراء
+    };
+    
+    await _firestore
+        .collection(CollectionName.vendorProducts)
+        .doc('mystery_box_${restaurantId}')
+        .set(mysteryBoxData);
+    
+    print("🎁 Added Mystery Box to restaurant: $restaurantId");
+  }
+  
+  /// إضافة Gift Bag للمطعم
+  static Future<void> _addGiftBag(String restaurantId) async {
+    final giftBagData = {
+      'addOnsPrice': <String>[],
+      'addOnsTitle': <String>[],
+      'availability_duration': 24,
+      'calories': 0,
+      'categoryID': 'special_products_category', // فئة خاصة للمنتجات الخاصة
+      'createdAt': FieldValue.serverTimestamp(),
+      'description': 'A beautifully packaged gift bag perfect for special occasions and celebrations.',
+      'disPrice': '0',
+      'fats': 0,
+      'grams': 0,
+      'id': 'gift_bag_${restaurantId}',
+      'item_attribute': null,
+      'name': 'Gift Bag',
+      'nonveg': false,
+      'photo': 'https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fgift_bag.png?alt=media&token=special_gift_bag',
+      'photos': <String>[
+        'https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/special_products%2Fgift_bag.png?alt=media&token=special_gift_bag'
+      ],
+      'price': '75.00',
+      'product_specification': <String, String>{
+        'Type': 'Gift Package',
+        'Contents': 'Curated selection',
+        'Perfect for': 'Special occasions',
+        'Purchase Limit': 'One per customer'
+      },
+      'proteins': 0,
+      'publish': true, // منشور
+      'quantity': 1, // يمكن شراؤه مرة واحدة فقط
+      'takeawayOption': true,
+      'veg': true,
+      'vendorID': restaurantId,
+      'reviewsCount': 0,
+      'reviewsSum': 0.0,
+      'isSpecialProduct': true, // علامة للمنتج الخاص
+      'purchaseLimit': 1, // حد الشراء
+    };
+    
+    await _firestore
+        .collection(CollectionName.vendorProducts)
+        .doc('gift_bag_${restaurantId}')
+        .set(giftBagData);
+    
+    print("🎁 Added Gift Bag to restaurant: $restaurantId");
+  }
+  
+  /// التحقق من إمكانية شراء المنتج الخاص
+  static Future<bool> canPurchaseSpecialProduct(String productId, String userId) async {
+    try {
+      // التحقق من وجود طلبات سابقة لهذا المنتج من نفس المستخدم
+      final orders = await _firestore
+          .collection(CollectionName.orders)
+          .where('userId', isEqualTo: userId)
+          .where('status', whereIn: ['pending', 'accepted', 'preparing', 'ready', 'delivered'])
+          .get();
+      
+      for (var orderDoc in orders.docs) {
+        final orderData = orderDoc.data();
+        final cartItems = orderData['cartItems'] as List<dynamic>?;
+        
+        if (cartItems != null) {
+          for (var item in cartItems) {
+            if (item['id'] == productId) {
+              print("❌ User has already purchased this special product");
+              return false;
+            }
+          }
+        }
+      }
+      
+      print("✅ User can purchase this special product");
+      return true;
+      
+    } catch (e) {
+      print("❌ Error checking special product purchase eligibility: $e");
+      return false;
+    }
+  }
+  
+  /// حذف المنتجات الخاصة من جميع المطاعم
+  static Future<void> removeSpecialProductsFromAllStores() async {
+    try {
+      print("🗑️ Starting to remove special products from all stores...");
+      
+      // جلب جميع المطاعم
+      final restaurants = await _firestore
+          .collection(CollectionName.vendors)
+          .get();
+      
+      int successCount = 0;
+      int errorCount = 0;
+      
+      for (var restaurantDoc in restaurants.docs) {
+        try {
+          final restaurantId = restaurantDoc.id;
+          
+          // حذف Mystery Box
+          await _firestore
+              .collection(CollectionName.vendorProducts)
+              .doc('mystery_box_${restaurantId}')
+              .delete();
+          
+          // حذف Gift Bag
+          await _firestore
+              .collection(CollectionName.vendorProducts)
+              .doc('gift_bag_${restaurantId}')
+              .delete();
+          
+          successCount++;
+          print("✅ Successfully removed special products from restaurant: $restaurantId");
+          
+        } catch (e) {
+          errorCount++;
+          print("❌ Error removing special products from restaurant ${restaurantDoc.id}: $e");
+        }
+      }
+      
+      // حذف الفئة الخاصة
+      await _firestore
+          .collection(CollectionName.vendorCategories)
+          .doc('special_products_category')
+          .delete();
+      
+      print("🎉 Special products removal completed!");
+      print("✅ Successfully processed: $successCount restaurants");
+      print("❌ Errors: $errorCount restaurants");
+      
+    } catch (e) {
+      print("💥 Fatal error in removeSpecialProductsFromAllStores: $e");
+    }
+  }
+}
+
+/// Widget لإدارة المنتجات الخاصة
+class SpecialProductsManagerWidget extends StatelessWidget {
+  const SpecialProductsManagerWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Special Products Manager'),
+        backgroundColor: Colors.orange,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Special Products Manager',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'This tool will add Mystery Box and Gift Bag to all restaurants with proper category management.',
+              style: TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () async {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const AlertDialog(
+                    content: Row(
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(width: 20),
+                        Text('Adding special products...'),
+                      ],
+                    ),
+                  ),
+                );
+                
+                await SpecialProductsManager.addSpecialProductsToAllStores();
+                
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Special products added successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              child: const Text(
+                'Add Special Products to All Stores',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 15),
+            ElevatedButton(
+              onPressed: () async {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const AlertDialog(
+                    content: Row(
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(width: 20),
+                        Text('Removing special products...'),
+                      ],
+                    ),
+                  ),
+                );
+                
+                await SpecialProductsManager.removeSpecialProductsFromAllStores();
+                
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Special products removed successfully!'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+              ),
+              child: const Text(
+                'Remove Special Products from All Stores',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 30),
+            const Text(
+              'Note: Special products can only be purchased once per customer.',
+              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

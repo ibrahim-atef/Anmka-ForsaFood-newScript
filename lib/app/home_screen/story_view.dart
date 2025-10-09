@@ -36,6 +36,42 @@ class MoreStoriesState extends State<MoreStories> {
 
   @override
   Widget build(BuildContext context) {
+    // التحقق من أن الـ Story معتمد (approved) فقط
+    if (widget.storyList[widget.index].status != 'approved') {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.block, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                "This story is not available",
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Story is pending approval",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[500],
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Go Back"),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
     // التحقق من أن الـ Story لم يمض عليه أكثر من 24 ساعة
     if (widget.storyList[widget.index].createdAt != null) {
       DateTime now = DateTime.now();
@@ -89,6 +125,7 @@ class MoreStoriesState extends State<MoreStories> {
                   return StoryItem.pageVideo(
                     widget.storyList[widget.index].videoUrl[i],
                     controller: storyController,
+                    duration: const Duration(seconds: 20), // زيادة المدة إلى 20 ثانية لضمان تشغيل الفيديو بالكامل
                   );
                 },
               ).toList(),

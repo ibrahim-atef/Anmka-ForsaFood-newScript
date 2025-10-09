@@ -1198,6 +1198,11 @@ class StoryView extends StatelessWidget {
                 itemBuilder: (context, index) {
                   StoryModel storyModel = controller.storyList[index];
                   
+                  // التحقق من أن الـ Story معتمد (approved) فقط
+                  if (storyModel.status != 'approved') {
+                    return const SizedBox(); // إخفاء الـ Story غير المعتمد
+                  }
+                  
                   // التحقق من أن الـ Story لم يمض عليه أكثر من 24 ساعة
                   if (storyModel.createdAt != null) {
                     DateTime now = DateTime.now();
