@@ -39,6 +39,7 @@ import 'package:customer/models/payment_model/stripe_model.dart';
 import 'package:customer/models/payment_model/wallet_setting_model.dart';
 import 'package:customer/models/payment_model/xendit.dart';
 import 'package:customer/models/product_model.dart';
+import 'package:customer/models/branch_model.dart';
 import 'package:customer/models/rating_model.dart';
 import 'package:customer/models/referral_model.dart';
 import 'package:customer/models/review_attribute_model.dart';
@@ -641,6 +642,26 @@ class FireStoreUtils {
       return null;
     }
     return vendorModel;
+  }
+
+  static Future<List<BranchModel>> getBranchesForVendor(String vendorId) async {
+    List<BranchModel> branches = [];
+    try {
+      final snapshot = await fireStore
+          .collection(CollectionName.vendors)
+          .doc(vendorId)
+          .collection('branches')
+          .get();
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        data['id'] = data['id'] ?? doc.id;
+        branches.add(BranchModel.fromJson(data, documentId: doc.id));
+      }
+    } catch (e) {
+      log('FireStoreUtils.getBranchesForVendor error: $e');
+    }
+    return branches;
   }
 
   static StreamController<List<VendorModel>>? getNearestVendorController;

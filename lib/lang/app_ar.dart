@@ -135,7 +135,7 @@
 //   "Orders": "اضغط مرتين للخروج",
 //   "Profile": "المفضلة",
 //   "Wallet": "الطلبات",
-//   "Dine in Bookings": "الملف الشخصي",
+
 //   "Order": "المحفظة",
 //   "Peoples": "حجوزات تناول الطعام",
 //   "View in Map": "الطلب",
@@ -181,8 +181,7 @@
 //   "Timing": "القائمة",
 //   "Cost for Two": "الموقع والتوقيت والتكاليف",
 //   "Cuisines": "عرض على الخريطة",
-//   "Dine-In Reservations": "التوقيت",
-//   "Book a table at your favorite restaurant and enjoy a delightful dining experience.": "التكلفة لشخصين",
+ //   "Book a table at your favorite restaurant and enjoy a delightful dining experience.": "التكلفة لشخصين",
 //   "No Restaurants Found in Your Area": "المأكولات",
 //   "Currently, there are no available restaurants in your zone. Try changing your location to find nearby options.": "حجوزات تناول الطعام",
 //   "New Arrivals": "احجز طاولة في مطعمك المفضل واستمتع بتجربة طعام ممتعة.",
@@ -345,8 +344,7 @@
 //   "we Enter In": "إلغاء الدفع",
 //   "Foodie Customer": "خروج",
 //   "Gift Card": "بطاقة الهدايا",
-//   "Dine-In": "تناول الطعام في المطعم",
-//   "Dine-In Booking": "حجز تناول الطعام في المطعم",
+
 //   "Share app": "مشاركة التطبيق",
 //   "Legal": "القانوني",
 //   "Delivery": "التوصيل",

@@ -24,7 +24,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:customer/app/map_screen/map_screen.dart';
 
 class RestaurantDetailsScreen extends StatefulWidget {
   const RestaurantDetailsScreen({super.key});
@@ -35,17 +35,7 @@ class RestaurantDetailsScreen extends StatefulWidget {
 
 class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
    Future<void> openMap(double latitude, double longitude) async {
-    final googleMapsUrl =
-        'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
-    final appleMapsUrl = 'https://maps.apple.com/?q=$latitude,$longitude';
-
-    if (await canLaunchUrl(Uri.parse(googleMapsUrl))) {
-      await launchUrl(Uri.parse(googleMapsUrl));
-    } else if (await canLaunchUrl(Uri.parse(appleMapsUrl))) {
-      await launchUrl(Uri.parse(appleMapsUrl));
-    } else {
-      throw 'Could not launch map.';
-    }
+    Get.to(() => MapScreen(latitude: latitude, longitude: longitude));
   }
 
   @override
@@ -449,32 +439,96 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                                       //     color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey500,
                                       //   ),
                                       // ),
-                                      // InkWell(
-                                      //   onTap: () {
-                                      //     if (controller.vendorModel.value.workingHours!.isEmpty) {
-                                      //       ShowToastDialog.showToast("Timing is not added by restaurant");
-                                      //     } else {
-                                      //       timeShowBottomSheet(context, controller);
-                                      //     }
-                                      //   },
-                                      //   child: Text(
-                                      //     "View Timings".tr,
-                                      //     textAlign: TextAlign.start,
-                                      //     maxLines: 1,
-                                      //     style: TextStyle(
-                                      //       fontSize: 14,
-                                      //       decoration: TextDecoration.underline,
-                                      //       decorationColor: AppThemeData.secondary300,
-                                      //       overflow: TextOverflow.ellipsis,
-                                      //       fontFamily: AppThemeData.semiBold,
-                                      //       fontWeight: FontWeight.w600,
-                                      //       color: themeChange.getThem() ? AppThemeData.secondary300 : AppThemeData.secondary300,
-                                      //     ),
-                                      //   ),
-                                      // ),
-                               
+                                      InkWell(
+                                        onTap: () {
+                                          if (controller.vendorModel.value.workingHours!.isEmpty) {
+                                            ShowToastDialog.showToast("Timing is not added by restaurant");
+                                          } else {
+                                            timeShowBottomSheet(context, controller);
+                                          }
+                                        },
+                                        child: Text(
+                                          "View Timings".tr,
+                                          textAlign: TextAlign.start,
+                                          maxLines: 1,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            decoration: TextDecoration.underline,
+                                            decorationColor: AppThemeData.secondary300,
+                                            overflow: TextOverflow.ellipsis,
+                                            fontFamily: AppThemeData.semiBold,
+                                            fontWeight: FontWeight.w600,
+                                            color: themeChange.getThem() ? AppThemeData.secondary300 : AppThemeData.secondary300,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      
                                     ],
                                   ),
+                                  const SizedBox(height: 8),
+                                  // Obx(() {
+                                  //   final list = controller.branches;
+                                  //   if (list.isEmpty) return const SizedBox();
+                                  //   return Column(
+                                  //     crossAxisAlignment: CrossAxisAlignment.start,
+                                  //     children: [
+                                  //       const SizedBox(height: 16),
+                                  //       Text(
+                                  //         "Branches".tr,
+                                  //         style: TextStyle(
+                                  //           fontSize: 16,
+                                  //           fontFamily: AppThemeData.semiBold,
+                                  //           fontWeight: FontWeight.w600,
+                                  //           color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                                  //         ),
+                                  //       ),
+                                  //       const SizedBox(height: 8),
+                                  //       ListView.separated(
+                                  //         shrinkWrap: true,
+                                  //         physics: const NeverScrollableScrollPhysics(),
+                                  //         itemCount: list.length,
+                                  //         separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                  //         itemBuilder: (_, i) {
+                                  //           final b = list[i];
+                                  //           return Container(
+                                  //             decoration: BoxDecoration(
+                                  //               borderRadius: const BorderRadius.all(Radius.circular(12)),
+                                  //               border: Border.all(color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey200),
+                                  //             ),
+                                  //             child: ListTile(
+                                  //               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  //               title: Text(b.title ?? b.location ?? 'Branch',
+                                  //                   style: TextStyle(
+                                  //                     fontFamily: AppThemeData.semiBold,
+                                  //                     color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                                  //                   )),
+                                  //               subtitle: Column(
+                                  //                 crossAxisAlignment: CrossAxisAlignment.start,
+                                  //                 children: [
+                                  //                   if ((b.location ?? '').isNotEmpty)
+                                  //                     Text(b.location!, style: TextStyle(color: themeChange.getThem() ? AppThemeData.grey300 : AppThemeData.grey600, fontFamily: AppThemeData.regular)),
+                                  //                   if (b.phonenumber != null && b.phonenumber!.isNotEmpty)
+                                  //                     Text(b.phonenumber!, style: TextStyle(color: themeChange.getThem() ? AppThemeData.grey300 : AppThemeData.grey600, fontFamily: AppThemeData.regular)),
+                                  //                 ],
+                                  //               ),
+                                  //               trailing: (b.latitude != null && b.longitude != null)
+                                  //                   ? IconButton(
+                                  //                       icon: const Icon(Icons.map_outlined),
+                                  //                       color: AppThemeData.primary300,
+                                  //                       onPressed: () {
+                                  //                         openMap(b.latitude!, b.longitude!);
+                                  //                       },
+                                  //                     )
+                                  //                   : null,
+                                  //             ),
+                                  //           );
+                                  //         },
+                                  //       ),
+                                  //     ],
+                                  //   );
+                                  // }),
+
                                   controller.vendorModel.value.dineInActive == true ||
                                           (controller.vendorModel.value.openDineTime != null && controller.vendorModel.value.openDineTime!.isNotEmpty)
                                       ? Column(

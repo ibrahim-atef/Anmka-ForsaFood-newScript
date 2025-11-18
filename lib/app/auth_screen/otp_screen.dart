@@ -5,13 +5,9 @@ import 'package:customer/app/location_permission_screen/location_permission_scre
 import 'package:customer/constant/constant.dart';
 import 'package:customer/constant/show_toast_dialog.dart';
 import 'package:customer/controllers/otp_controller.dart';
-import 'package:customer/models/user_model.dart';
 import 'package:customer/themes/app_them_data.dart';
 import 'package:customer/themes/round_button_fill.dart';
 import 'package:customer/utils/dark_theme_provider.dart';
-import 'package:customer/utils/fire_store_utils.dart';
-import 'package:customer/utils/notification_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -58,7 +54,7 @@ class OtpScreen extends StatelessWidget {
                             height: 60,
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 0),
                             child: PinCodeTextField(
                               length: 6,
                               appContext: context,
@@ -68,7 +64,7 @@ class OtpScreen extends StatelessWidget {
                               textStyle: TextStyle(color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900, fontFamily: AppThemeData.regular),
                               pinTheme: PinTheme(
                                   fieldHeight: 50,
-                                  fieldWidth: 50,
+                                  fieldWidth: 45, // Reduced from 50 to fit better
                                   inactiveFillColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
                                   selectedFillColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
                                   activeFillColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
@@ -95,72 +91,7 @@ class OtpScreen extends StatelessWidget {
                             textColor: AppThemeData.grey50,
                             onPress: () async {
                               if (controller.otpController.value.text.length == 6) {
-                                ShowToastDialog.showLoader("Verify otp".tr);
-
-                                PhoneAuthCredential credential =
-                                    PhoneAuthProvider.credential(verificationId: controller.verificationId.value, smsCode: controller.otpController.value.text);
-                                String fcmToken = await NotificationService.getToken();
-                                await FirebaseAuth.instance.signInWithCredential(credential).then((value) async {
-                                  if (value.additionalUserInfo!.isNewUser) {
-                                    UserModel userModel = UserModel();
-                                    userModel.id = value.user!.uid;
-                                    userModel.countryCode = controller.countryCode.value;
-                                    userModel.phoneNumber = controller.phoneNumber.value;
-                                    userModel.fcmToken = fcmToken;
-                                    userModel.provider = 'phone';
-
-                                    ShowToastDialog.closeLoader();
-                                    Get.off(const SignupScreen(), arguments: {
-                                      "userModel": userModel,
-                                      "type": "mobileNumber",
-                                    });
-                                  } else {
-                                    await FireStoreUtils.userExistOrNot(value.user!.uid).then((userExit) async {
-                                      ShowToastDialog.closeLoader();
-                                      if (userExit == true) {
-                                        UserModel? userModel = await FireStoreUtils.getUserProfile(value.user!.uid);
-                                        if (userModel!.role == Constant.userRoleCustomer) {
-                                          if (userModel.active == true) {
-                                            userModel.fcmToken = await NotificationService.getToken();
-                                            await FireStoreUtils.updateUser(userModel);
-                                            if (userModel.shippingAddress != null && userModel.shippingAddress!.isNotEmpty) {
-                                              if (userModel.shippingAddress!.where((element) => element.isDefault == true).isNotEmpty) {
-                                                Constant.selectedLocation = userModel.shippingAddress!.where((element) => element.isDefault == true).single;
-                                              } else {
-                                                Constant.selectedLocation = userModel.shippingAddress!.first;
-                                              }
-                                              Get.offAll(const DashBoardScreen());
-                                            } else {
-                                              Get.offAll(const LocationPermissionScreen());
-                                            }
-                                          } else {
-                                            ShowToastDialog.showToast("This user is disable please contact to administrator".tr);
-                                            await FirebaseAuth.instance.signOut();
-                                            Get.offAll(const LoginScreen());
-                                          }
-                                        } else {
-                                          await FirebaseAuth.instance.signOut();
-                                          Get.offAll(const LoginScreen());
-                                        }
-                                      } else {
-                                        UserModel userModel = UserModel();
-                                        userModel.id = value.user!.uid;
-                                        userModel.countryCode = controller.countryCode.value;
-                                        userModel.phoneNumber = controller.phoneNumber.value;
-                                        userModel.fcmToken = fcmToken;
-                                        userModel.provider = 'phone';
-
-                                        Get.off(const SignupScreen(), arguments: {
-                                          "userModel": userModel,
-                                          "type": "mobileNumber",
-                                        });
-                                      }
-                                    });
-                                  }
-                                }).catchError((error) {
-                                  ShowToastDialog.closeLoader();
-                                  ShowToastDialog.showToast("Invalid Code".tr);
-                                });
+                                await controller.verifyOtp();
                               } else {
                                 ShowToastDialog.showToast("Enter Valid otp".tr);
                               }

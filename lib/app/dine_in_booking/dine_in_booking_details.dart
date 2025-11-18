@@ -46,7 +46,7 @@ class DineInBookingDetails extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Order ${Constant.orderId(orderId: controller.bookingModel.value.id.toString())}",
+                                    "Order ${Constant.orderId(orderId: controller.bookingModel.value.id.toString(), createdAt: controller.bookingModel.value.createdAt)}",
                                     style: TextStyle(
                                       fontSize: 18,
                                       color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,

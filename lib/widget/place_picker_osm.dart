@@ -66,14 +66,36 @@ class _LocationPickerState extends State<LocationPicker> {
           _markers.add(position);
         });
 
-        place = await Nominatim.reverseSearch(
-          lat: position.latitude,
-          lon: position.longitude,
-          zoom: 14,
-          addressDetails: true,
-          extraTags: true,
-          nameDetails: true,
-        );
+        try {
+          // Use custom reverse search with proper error handling
+          final controller = OsmSearchPlaceController();
+          place = await controller.reverseSearchWithUA(
+            lat: position.latitude,
+            lon: position.longitude,
+            zoom: 14,
+            addressDetails: true,
+            extraTags: true,
+            nameDetails: true,
+          );
+        } catch (e) {
+          debugPrint('Reverse search error: $e');
+          // Create a fallback place with coordinates
+          place = Place(
+            placeId: 0,
+            osmType: null,
+            osmId: null,
+            boundingBox: [],
+            lat: position.latitude,
+            lon: position.longitude,
+            displayName: 'Location (${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)})',
+            placeRank: 0,
+            category: 'unknown',
+            type: 'unknown',
+            importance: 0.0,
+            icon: null,
+            address: null,
+          );
+        }
         setState(() {});
         mapController.goToLocation(position);
       });

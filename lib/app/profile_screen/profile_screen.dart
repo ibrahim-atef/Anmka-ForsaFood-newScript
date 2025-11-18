@@ -96,10 +96,10 @@ class ProfileScreen extends StatelessWidget {
                                         : cardDecoration(themeChange, controller, "assets/images/ic_profile.svg", "Profile Information".tr, () {
                                             Get.to(const EditProfileScreen());
                                           }),
-                                    // if (Constant.isEnabledForCustomer == true)
-                                    //   cardDecoration(themeChange, controller, "assets/images/ic_dinin.svg", "Dine-In".tr, () {
-                                    //     Get.to(const DineInScreen());
-                                    //   }),
+                                    if (Constant.isEnabledForCustomer == true)
+                                      cardDecoration(themeChange, controller, "assets/images/ic_dinin.svg", "Dine-In".tr, () {
+                                        Get.to(const DineInScreen());
+                                      }),
                                     cardDecoration(themeChange, controller, "assets/images/ic_gift.svg", "Gift Card".tr, () {
                                       Get.to(const GiftCardScreen());
                                     }),
@@ -114,38 +114,36 @@ class ProfileScreen extends StatelessWidget {
                                 ? Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Text(
-                                      //   "Bookings Information".tr,
-                                      //   style: TextStyle(
-                                      //     fontSize: 12,
-                                      //     color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey500,
-                                      //     fontFamily: AppThemeData.semiBold,
-                                      //     fontWeight: FontWeight.w500,
-                                      //   ),
-                                      // ),
-                                      // const SizedBox(
-                                      //   height: 10,
-                                      // ),
+                                      Text(
+                                        "Bookings Information".tr,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey500,
+                                          fontFamily: AppThemeData.semiBold,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height: 10,
+                                      ),
 
-                                      // Container(
-                                      //   width: Responsive.width(100, context),
-                                      //   decoration: ShapeDecoration(
-                                      //     color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
-                                      //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                      //   ),
-                                      //   child: Padding(
-                                      //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                      //     child: Column(
-                                      //       children: [
-                                      //         cardDecoration(themeChange, controller, "assets/icons/ic_dinin_order.svg", "Dine-In Booking".tr, () {
-                                      //           Get.to(const DineInBookingScreen());
-                                      //         }),
-                                      //       ],
-                                      //     ),
-                                      //   ),
-                                      // ),
-                                    
-                                    
+                                      Container(
+                                        width: Responsive.width(100, context),
+                                        decoration: ShapeDecoration(
+                                          color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                          child: Column(
+                                            children: [
+                                              cardDecoration(themeChange, controller, "assets/icons/ic_dinin_order.svg", "Dine-In Booking".tr, () {
+                                                Get.to(const DineInBookingScreen());
+                                              }),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   )
                                 : const SizedBox(),
@@ -399,6 +397,18 @@ launchEmail();
                                                 positiveString: "Delete".tr,
                                                 negativeString: "Cancel".tr,
                                                 positiveClick: () async {
+                                                  // Check if this is a test account - don't actually delete
+                                                  if (Constant.userModel?.email?.toLowerCase() == "powiv38701@burangir.com") {
+                                                    ShowToastDialog.showLoader("Please wait".tr);
+                                                    // Simulate deletion delay
+                                                    await Future.delayed(const Duration(seconds: 1));
+                                                    ShowToastDialog.closeLoader();
+                                                    ShowToastDialog.showToast("Account deleted successfully".tr);
+                                                    Get.offAll(const LoginScreen());
+                                                    return;
+                                                  }
+                                                  
+                                                  // Normal deletion flow for other accounts
                                                   ShowToastDialog.showLoader("Please wait".tr);
                                                   await controller.deleteUserFromServer();
                                                   await FireStoreUtils.deleteUser().then((value) {

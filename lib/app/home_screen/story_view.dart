@@ -11,6 +11,7 @@ import 'package:customer/widget/story_view/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../widget/story_view/widgets/story_view.dart';
 
@@ -32,6 +33,21 @@ class MoreStoriesState extends State<MoreStories> {
   void dispose() {
     storyController.dispose();
     super.dispose();
+  }
+
+  /// Get the actual duration of a video URL
+  Future<Duration> _getVideoDuration(String videoUrl) async {
+    try {
+      final VideoPlayerController controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+      await controller.initialize();
+      final duration = controller.value.duration;
+      await controller.dispose();
+      return duration;
+    } catch (e) {
+      debugPrint('Error getting video duration: $e');
+      // Return a default duration if we can't get the actual duration
+      return const Duration(seconds: 10);
+    }
   }
 
   @override
@@ -118,17 +134,29 @@ class MoreStoriesState extends State<MoreStories> {
     return Scaffold(
       body: Stack(
         children: [
-          StoryView(
-              storyItems: List.generate(
-                widget.storyList[widget.index].videoUrl.length,
-                (i) {
-                  return StoryItem.pageVideo(
-                    widget.storyList[widget.index].videoUrl[i],
-                    controller: storyController,
-                    duration: const Duration(seconds: 20), // زيادة المدة إلى 20 ثانية لضمان تشغيل الفيديو بالكامل
-                  );
-                },
-              ).toList(),
+          FutureBuilder<List<Duration>>(
+            future: Future.wait(
+              widget.storyList[widget.index].videoUrl.map((url) => _getVideoDuration(url))
+            ),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              
+              final durations = snapshot.data ?? [];
+              
+              return StoryView(
+                storyItems: List.generate(
+                  widget.storyList[widget.index].videoUrl.length,
+                  (i) {
+                    final duration = i < durations.length ? durations[i] : const Duration(seconds: 10);
+                    return StoryItem.pageVideo(
+                      widget.storyList[widget.index].videoUrl[i],
+                      controller: storyController,
+                      duration: duration, // استخدام المدة الفعلية للفيديو
+                    );
+                  },
+                ).toList(),
               onComplete: () {
                 debugPrint("--------->");
                 debugPrint(widget.storyList.length.toString());
@@ -148,7 +176,9 @@ class MoreStoriesState extends State<MoreStories> {
                 if (direction == Direction.down) {
                   Navigator.pop(context);
                 }
-              }),
+              });
+            },
+          ),
           Padding(
             padding:  EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top + 30,left: 16,right: 16),
             child: FutureBuilder(

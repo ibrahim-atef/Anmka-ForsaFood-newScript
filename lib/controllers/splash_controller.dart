@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:customer/app/auth_screen/email_verification_screen.dart';
 import 'package:customer/app/auth_screen/login_screen.dart';
 import 'package:customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:customer/app/on_boarding_screen.dart';
 import 'package:customer/constant/constant.dart';
 import 'package:customer/models/user_model.dart';
+import 'package:customer/services/auth_service.dart';
 import 'package:customer/utils/fire_store_utils.dart';
 import 'package:customer/utils/notification_service.dart';
 import 'package:customer/utils/preferences.dart';
@@ -26,6 +28,22 @@ class SplashController extends GetxController {
     } else {
       bool isLogin = await FireStoreUtils.isLogin();
       if (isLogin == true) {
+        // Check email verification for email/password users
+        final authService = AuthService();
+        if (authService.requiresEmailVerification()) {
+          // Get user email BEFORE signing out
+          String? userEmail = FirebaseAuth.instance.currentUser?.email ?? '';
+          
+          // Sign out unverified user
+          await FirebaseAuth.instance.signOut();
+          
+          // Navigate to email verification screen
+          Get.offAll(() => EmailVerificationScreen(
+            email: userEmail,
+          ));
+          return;
+        }
+        
         await FireStoreUtils.getUserProfile(FireStoreUtils.getCurrentUid())
             .then((value) async {
           if (value != null) {

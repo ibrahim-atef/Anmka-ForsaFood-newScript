@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
+import 'package:customer/app/auth_screen/email_verification_screen.dart';
 import 'package:customer/app/auth_screen/signup_screen.dart';
 import 'package:customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:customer/constant/constant.dart';
 import 'package:customer/constant/show_toast_dialog.dart';
 import 'package:customer/models/user_model.dart';
+import 'package:customer/services/auth_service.dart';
 import 'package:customer/utils/fire_store_utils.dart';
 import 'package:customer/utils/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -43,6 +45,20 @@ class LoginController extends GetxController {
         ShowToastDialog.showToast("Login failed, please try again.".tr);
         return;
       }
+
+      // Check email verification for email/password login
+      final authService = AuthService();
+      if (authService.requiresEmailVerification()) {
+        ShowToastDialog.closeLoader();
+        
+        // Sign out unverified user
+        await FirebaseAuth.instance.signOut();
+        
+        // Show verification dialog with action button
+        _showEmailVerificationDialog(emailEditingController.value.text.trim());
+        return;
+      }
+
       UserModel? userModel =
           await FireStoreUtils.getUserProfile(credential.user!.uid);
       debugPrint("Login :: ${userModel?.toJson()}");
@@ -333,6 +349,83 @@ class LoginController extends GetxController {
       debugPrint(e.toString());
     }
     return null;
+  }
+
+  // Show email verification dialog with action button
+  void _showEmailVerificationDialog(String email) {
+    Get.dialog(
+      CupertinoAlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              CupertinoIcons.mail,
+
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                "Email Verification Required".tr,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 12.0),
+          child: Column(
+            children: [
+              Text(
+                "Your email address is not verified yet. Please verify your email to access your account.".tr,
+                style: const TextStyle(fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                email,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () {
+              Get.back();
+            },
+            child: Text(
+              "Cancel".tr,
+              style: const TextStyle(
+                color: CupertinoColors.systemGrey,
+              ),
+            ),
+          ),
+          CupertinoDialogAction(
+            onPressed: () {
+              Get.back();
+              Get.to(() => EmailVerificationScreen(email: email));
+            },
+            isDefaultAction: true,
+            child: Text(
+              "Verify Email".tr,
+              style: TextStyle(
+
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
   }
  
 }

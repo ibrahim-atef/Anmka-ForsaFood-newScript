@@ -44,6 +44,7 @@ class VendorModel {
   Timestamp? subscriptionExpiryDate;
   SubscriptionPlanModel? subscriptionPlan;
   String? subscriptionTotalOrders;
+  String? deliveryTimeRange;
 
   VendorModel({
     this.author,
@@ -87,6 +88,7 @@ class VendorModel {
     this.subscriptionExpiryDate,
     this.subscriptionPlan,
     this.subscriptionTotalOrders,
+    this.deliveryTimeRange,
   });
 
   VendorModel.fromJson(Map<String, dynamic> json) {
@@ -110,7 +112,7 @@ class VendorModel {
     reststatus = json['reststatus'];
     filters = json['filters'] != null ? Filters.fromJson(json['filters']) : null;
     reviewsCount = json['reviewsCount'] ?? 0.0;
-    photo = json['photo'];
+    photo = json['photo']??json['authorProfilePic'];
     description = json['description'];
     walletAmount = json['walletAmount'];
     closeDineTime = json['closeDineTime'];
@@ -141,6 +143,7 @@ class VendorModel {
     subscriptionExpiryDate = json['subscriptionExpiryDate'];
     subscriptionPlan = json['subscription_plan'] != null ? SubscriptionPlanModel.fromJson(json['subscription_plan']) : null;
     subscriptionTotalOrders = json['subscriptionTotalOrders'];
+    deliveryTimeRange = json['DeliveryTimeRange'];
   }
 
   Map<String, dynamic> toJson() {
@@ -198,6 +201,7 @@ class VendorModel {
     data['categoryTitle'] = categoryTitle;
     data['latitude'] = latitude;
     data['subscriptionTotalOrders'] = subscriptionTotalOrders;
+    data['DeliveryTimeRange'] = deliveryTimeRange;
     return data;
   }
 }

@@ -4,7 +4,10 @@ import 'package:customer/utils/dark_theme_provider.dart';
 import 'package:customer/widget/osm_search_place_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
 
 
 // ==============================  osm_search_place_controller.dart
@@ -37,6 +40,89 @@ class OsmSearchPlaceController extends GetxController {
 
   Timer? _debounce; // لمنع وابل الطلبات
 
+  Future<List<Place>> _searchByNameWithUA({
+    required String query,
+    int limit = 10,
+    String? language,
+  }) async {
+    final uri = Uri.https(
+      'nominatim.openstreetmap.org',
+      '/search',
+      {
+        'format': 'jsonv2',
+        'q': query,
+        'limit': limit.toString(),
+        if (language != null) 'accept-language': language,
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'User-Agent': 'ForsaFood/1.0 (support@anmka.com)',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Nominatim HTTP ${response.statusCode}');
+    }
+
+    // Check if response is HTML instead of JSON
+    if (response.body.trim().startsWith('<')) {
+      throw Exception('Nominatim returned HTML instead of JSON (likely rate limited)');
+    }
+
+    final List<dynamic> data = json.decode(response.body) as List<dynamic>;
+    return data
+        .map<Place>((p) => Place.fromJson(p as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Custom reverse search function with User-Agent header to avoid HTML responses
+  Future<Place?> reverseSearchWithUA({
+    required double lat,
+    required double lon,
+    int zoom = 14,
+    bool addressDetails = true,
+    bool extraTags = true,
+    bool nameDetails = true,
+  }) async {
+    final uri = Uri.https(
+      'nominatim.openstreetmap.org',
+      '/reverse',
+      {
+        'lat': lat.toString(),
+        'lon': lon.toString(),
+        'format': 'json',
+        'zoom': zoom.toString(),
+        'addressdetails': addressDetails ? '1' : '0',
+        'extratags': extraTags ? '1' : '0',
+        'namedetails': nameDetails ? '1' : '0',
+      },
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'User-Agent': 'ForsaFood/1.0 (support@anmka.com)',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Nominatim reverse HTTP ${response.statusCode}');
+    }
+
+    // Check if response is HTML instead of JSON
+    if (response.body.trim().startsWith('<')) {
+      throw Exception('Nominatim returned HTML instead of JSON (likely rate limited)');
+    }
+
+    final Map<String, dynamic> data = json.decode(response.body) as Map<String, dynamic>;
+    return Place.fromJson(data);
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -66,22 +152,28 @@ Future<void> _fetchSuggestions(String query) async {
   debugPrint("→ Searching for: $query");          // ⬅️ بداية البحث
 
   try {
-    // ⚠️ الميثود يستقبل name وليس query
-    final results = await Nominatim.searchByName(
+    // Use custom request with proper User-Agent to avoid HTML/blocked responses
+    final results = await _searchByNameWithUA(
       query: query,
       limit: 10,
+      language: 'en',
     );
 
     debugPrint("← Got ${results.length} results"); // ⬅️ عدد النتائج
 
-    for (final p in results) {
-      debugPrint("• ${p.displayName}  (${p.lat}, ${p.lon})");
+    if (results.isNotEmpty) {
+      for (final p in results) {
+        debugPrint("• ${p.displayName}  (${p.lat}, ${p.lon})");
+      }
+      suggestionsList.assignAll(results);
+    } else {
+      suggestionsList.clear();
+      debugPrint("No results found for: $query");
     }
-
-    suggestionsList.assignAll(results);
   } catch (e, st) {
     debugPrint("Nominatim search error: $e");
     debugPrintStack(stackTrace: st);              // ⬅️ ستاك كامل لو فيه مشكلة
+    // Show a message to the user that search is unavailable
     suggestionsList.clear();
   }
 }
@@ -159,7 +251,16 @@ class OsmSearchPlacesApi extends StatelessWidget {
                           title: Text(place.displayName ?? 'Unnamed place'),
                           subtitle: Text(
                               '${place.lat}, ${place.lon}', style: const TextStyle(fontSize: 12)),
-                          onTap: () => Get.back(result: place),
+                          onTap: () {
+                            final info = SearchInfo(
+                              point: GeoPoint(
+                                latitude: place.lat,
+                                longitude: place.lon,
+                              ),
+                              address: Address(name: place.displayName),
+                            );
+                            Get.back(result: info);
+                          },
                         );
                       },
                     ),

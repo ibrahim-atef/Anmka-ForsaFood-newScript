@@ -1,0 +1,252 @@
+import 'dart:io';
+
+import 'package:country_code_picker/country_code_picker.dart';
+import 'package:customer/app/auth_screen/verify_otp_screen.dart';
+import 'package:customer/constant/show_toast_dialog.dart';
+import 'package:customer/services/otp_service.dart';
+import 'package:customer/themes/app_them_data.dart';
+import 'package:customer/themes/round_button_border.dart';
+import 'package:customer/themes/round_button_fill.dart';
+import 'package:customer/themes/text_field_widget.dart';
+import 'package:customer/utils/dark_theme_provider.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+
+class PhoneEntryScreen extends StatefulWidget {
+  const PhoneEntryScreen({super.key});
+
+  @override
+  State<PhoneEntryScreen> createState() => _PhoneEntryScreenState();
+}
+
+class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _countryCodeController = TextEditingController();
+  final OtpService _otpService = OtpService();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _countryCodeController.text = '+20'; // Default to Egypt
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _countryCodeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendOtp() async {
+    if (_phoneController.text.isEmpty) {
+      ShowToastDialog.showToast("Please enter mobile number".tr);
+      return;
+    }
+
+    if (_phoneController.text.length < 8) {
+      ShowToastDialog.showToast("Please enter a valid phone number".tr);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    ShowToastDialog.showLoader("Sending OTP...".tr);
+
+    final result = await _otpService.sendOtp(
+      _phoneController.text.trim(),
+      countryCode: _countryCodeController.text.replaceFirst('+', ''),
+    );
+
+    ShowToastDialog.closeLoader();
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result == SendResult.success) {
+      final normalizedPhone = _otpService.normalizePhone(
+        _phoneController.text.trim(),
+        countryCode: _countryCodeController.text.replaceFirst('+', ''),
+      );
+      
+      Get.to(
+        () => VerifyOtpScreen(
+          phone: normalizedPhone,
+          countryCode: _countryCodeController.text,
+        ),
+      );
+      ShowToastDialog.showToast("OTP sent successfully".tr);
+    } else if (result == SendResult.rateLimited) {
+      ShowToastDialog.showToast("Please wait before requesting a new OTP".tr);
+    } else {
+      ShowToastDialog.showToast("Failed to send OTP. Please try again.".tr);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeChange = Provider.of<DarkThemeProvider>(context);
+    
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Verify Your Phone Number 📱".tr,
+                style: TextStyle(
+                  color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                  fontSize: 22,
+                  fontFamily: AppThemeData.semiBold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Enter your phone number to receive a verification code via SMS.".tr,
+                style: TextStyle(
+                  color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey500,
+                  fontSize: 16,
+                  fontFamily: AppThemeData.regular,
+                ),
+              ),
+              const SizedBox(height: 32),
+              TextFieldWidget(
+                title: 'Phone Number'.tr,
+                controller: _phoneController,
+                hintText: 'Enter Phone Number'.tr,
+                textInputType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+                textInputAction: TextInputAction.done,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
+                ],
+                prefix: CountryCodePicker(
+                  onChanged: (value) {
+                    _countryCodeController.text = value.dialCode.toString();
+                  },
+                  dialogTextStyle: TextStyle(
+                    color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: AppThemeData.medium,
+                  ),
+                  dialogBackgroundColor: themeChange.getThem() ? AppThemeData.grey800 : AppThemeData.grey100,
+                  initialSelection: _countryCodeController.text,
+                  comparator: (a, b) => b.name!.compareTo(a.name.toString()),
+                  textStyle: TextStyle(
+                    fontSize: 14,
+                    color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                    fontFamily: AppThemeData.medium,
+                  ),
+                  searchDecoration: InputDecoration(
+                    iconColor: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                  ),
+                  searchStyle: TextStyle(
+                    color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: AppThemeData.medium,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 36),
+              RoundedButtonFill(
+                title: "Send OTP".tr,
+                color: AppThemeData.primary300,
+                textColor: AppThemeData.grey50,
+                isEnabled: !_isLoading,
+                onPress: _sendOtp,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Row(
+                  children: [
+                    const Expanded(child: Divider(thickness: 1)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+                      child: Text(
+                        "or".tr,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: themeChange.getThem() ? AppThemeData.grey500 : AppThemeData.grey400,
+                          fontSize: 16,
+                          fontFamily: AppThemeData.medium,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+              ),
+              RoundedButtonBorder(
+                title: "Continue with Email".tr,
+                textColor: AppThemeData.primary300,
+                icon: SvgPicture.asset("assets/icons/ic_mail.svg"),
+                isRight: false,
+                onPress: () async {
+                  Get.back();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: EdgeInsets.symmetric(vertical: Platform.isAndroid ? 10 : 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Didn\'t have an account?'.tr,
+                    style: TextStyle(
+                      color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                      fontFamily: AppThemeData.medium,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const WidgetSpan(child: SizedBox(width: 10)),
+                  TextSpan(
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        Get.back();
+                      },
+                    text: 'Sign up'.tr,
+                    style: TextStyle(
+                      color: AppThemeData.primary300,
+                      fontFamily: AppThemeData.bold,
+                      fontWeight: FontWeight.w500,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppThemeData.primary300,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+
+
+
+

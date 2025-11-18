@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg',
-    appId: '1:780002452262:android:c75e10994b5d7e20bd17e7',
+    appId: '1:780002452262:android:6c3c9bdd957a2bd6bd17e7',
     messagingSenderId: '780002452262',
     projectId: 'forsa-food-b6b50',
     databaseURL: 'https://forsa-food-b6b50-default-rtdb.firebaseio.com',
@@ -60,13 +60,14 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCTuAVE8cvPwUrjHz7f-Ub6M4rdJiqTitA',
-    appId: '1:780002452262:ios:2814b6faa9ee1d86bd17e7',
+    appId: '1:780002452262:ios:ce4b041389d47938bd17e7',
     messagingSenderId: '780002452262',
     projectId: 'forsa-food-b6b50',
     databaseURL: 'https://forsa-food-b6b50-default-rtdb.firebaseio.com',
     storageBucket: 'forsa-food-b6b50.firebasestorage.app',
-    iosClientId: '780002452262-ubc6rfr61tun2m3uivc0i5f81s5r30lb.apps.googleusercontent.com',
-    iosBundleId: 'com.foodies.customer.ios',
+    androidClientId: '780002452262-69v9380gdn29fn8isdbto4pse9vdc4rc.apps.googleusercontent.com',
+    iosClientId: '780002452262-7ggs4aipsvp06qh4j1nhlkiqnh2etht0.apps.googleusercontent.com',
+    iosBundleId: 'com.anmka.forsafeedaap',
   );
 
 }

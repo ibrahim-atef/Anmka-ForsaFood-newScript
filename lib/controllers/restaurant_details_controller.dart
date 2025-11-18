@@ -10,6 +10,7 @@ import 'package:customer/models/favourite_model.dart';
 import 'package:customer/models/product_model.dart';
 import 'package:customer/models/vendor_category_model.dart';
 import 'package:customer/models/vendor_model.dart';
+import 'package:customer/models/branch_model.dart';
 import 'package:customer/services/cart_provider.dart';
 import 'package:customer/utils/fire_store_utils.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ class RestaurantDetailsController extends GetxController {
   RxList<VendorCategoryModel> vendorCategoryList = <VendorCategoryModel>[].obs;
 
   RxList<CouponModel> couponList = <CouponModel>[].obs;
+  RxList<BranchModel> branches = <BranchModel>[].obs;
 
   @override
   void onInit() {
@@ -100,6 +102,7 @@ class RestaurantDetailsController extends GetxController {
     statusCheck();
 
     await getProduct();
+    await _loadBranches();
 
     isLoading.value = false;
     await getFavouriteList();
@@ -107,10 +110,38 @@ class RestaurantDetailsController extends GetxController {
     update();
   }
 
+  Future<void> _loadBranches() async {
+    try {
+      final vendorId = vendorModel.value.id;
+      if (vendorId == null || vendorId.isEmpty) return;
+      final list = await FireStoreUtils.getBranchesForVendor(vendorId);
+      branches.assignAll(list);
+    } catch (e) {
+      log('RestaurantDetailsController._loadBranches error: $e');
+    }
+  }
+
   getProduct() async {
     print("🔍 RestaurantDetailsController: getProduct() called for vendorId: ${vendorModel.value.id}");
     
-    // جلب المنتجات الخاصة من Firestore
+    // مسح القوائم الحالية قبل إعادة البناء
+    productList.clear();
+    allProductList.clear();
+
+    // 1) جلب المنتجات العادية المنشورة لهذا المتجر
+    print("🔍 RestaurantDetailsController: Fetching regular products for vendor");
+    List<ProductModel> vendorProducts = await FireStoreUtils.getProductByVendorId(vendorModel.value.id ?? "");
+    // فلترة محلية: منتجات منشورة وليست خاصة
+    final regular = vendorProducts.where((p) {
+      final isSpecial = (p.specialType != null && p.specialType!.isNotEmpty) || (p.isSpecialProduct == true);
+      final isPublished = p.publish == true;
+      return isPublished && !isSpecial;
+    }).toList();
+
+    allProductList.addAll(regular);
+    productList.addAll(regular);
+
+    // 2) إلحاق المنتجات الخاصة (Surprise Bag / Mystery Box) دون حذف الأساسية
     print("🔍 RestaurantDetailsController: Fetching special products from Firestore");
     await _fetchSpecialProductsFromFirestore();
 
@@ -275,10 +306,6 @@ class RestaurantDetailsController extends GetxController {
   Future<void> _fetchSpecialProductsFromFirestore() async {
     print("🎁 Fetching special products from Firestore for vendor: ${vendorModel.value.id}");
     
-    // مسح جميع المنتجات أولاً
-    productList.clear();
-    allProductList.clear();
-    
     try {
       // جلب المنتجات الخاصة من Firestore لهذا المطعم فقط
       List<ProductModel> specialProducts = await FireStoreUtils.getSpecialProductsByVendorId(vendorModel.value.id!);
@@ -300,7 +327,7 @@ class RestaurantDetailsController extends GetxController {
           return isSpecial;
         }).toList();
         
-        // إضافة المنتجات المفلترة
+        // إضافة المنتجات المفلترة (دون مسح المنتجات الأساسية)
         productList.addAll(filteredProducts);
         allProductList.addAll(filteredProducts);
         

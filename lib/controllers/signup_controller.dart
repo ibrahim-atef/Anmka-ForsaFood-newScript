@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:customer/app/auth_screen/email_verification_screen.dart';
 import 'package:customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:customer/constant/constant.dart';
 import 'package:customer/constant/show_toast_dialog.dart';
 import 'package:customer/models/referral_model.dart';
 import 'package:customer/models/user_model.dart';
+import 'package:customer/services/auth_service.dart';
 import 'package:customer/utils/fire_store_utils.dart';
 import 'package:customer/utils/notification_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -136,20 +138,28 @@ class SignupController extends GetxController {
             }
           });
 
-          await FireStoreUtils.updateUser(userModel.value).then(
-            (value) async {
-              if (userModel.value.shippingAddress != null && userModel.value.shippingAddress!.isNotEmpty) {
-                if (userModel.value.shippingAddress!.where((element) => element.isDefault == true).isNotEmpty) {
-                  Constant.selectedLocation = userModel.value.shippingAddress!.where((element) => element.isDefault == true).single;
-                } else {
-                  Constant.selectedLocation = userModel.value.shippingAddress!.first;
-                }
-                Get.offAll(const DashBoardScreen());
-              } else {
-                Get.offAll(const LocationPermissionScreen());
-              }
-            },
-          );
+          // Save user data to Firestore
+          await FireStoreUtils.updateUser(userModel.value);
+
+          // Send email verification
+          final authService = AuthService();
+          try {
+            await authService.sendEmailVerification();
+            ShowToastDialog.closeLoader();
+            
+            // Navigate to email verification screen
+            Get.offAll(() => EmailVerificationScreen(
+              email: emailEditingController.value.text.trim(),
+            ));
+            
+            ShowToastDialog.showToast("Verification email sent! Please check your inbox.".tr);
+          } catch (e) {
+            ShowToastDialog.closeLoader();
+            ShowToastDialog.showToast("Account created but failed to send verification email. Please try again from login.".tr);
+            
+            // Sign out the user since email is not verified
+            await FirebaseAuth.instance.signOut();
+          }
         }
       } on FirebaseAuthException catch (e) {
         if (e.code == 'weak-password') {

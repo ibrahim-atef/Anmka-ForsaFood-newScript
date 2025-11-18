@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import 'dart:async';
 
@@ -81,7 +82,10 @@ class OrderDetailsScreen extends StatelessWidget {
                         children: [
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10),
-                            child: OrderTimeCountdown(orderCreatedAt: controller.orderModel.value.createdAt),
+                            child: OrderTimeCountdown(
+                              orderCreatedAt: controller.orderModel.value.createdAt,
+                              vendorID: controller.orderModel.value.vendorID,
+                            ),
                           ),
 
                           Row(
@@ -92,12 +96,38 @@ class OrderDetailsScreen extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      "Order ${Constant.orderId(orderId: controller.orderModel.value.id.toString())}".tr,
+                                      "Order ${Constant.orderId(orderId: controller.orderModel.value.id.toString(), createdAt: controller.orderModel.value.createdAt)}".tr,
                                       textAlign: TextAlign.start,
                                       style: TextStyle(
                                         fontFamily: AppThemeData.semiBold,
                                         fontSize: 18,
                                         color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    InkWell(
+                                      onTap: () {
+                                        _showQRCodeDialog(context, controller.orderModel.value.id.toString(), themeChange);
+                                      },
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.qr_code,
+                                            size: 16,
+                                            color: AppThemeData.primary300,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            "Show QR Code".tr,
+                                            style: TextStyle(
+                                              fontFamily: AppThemeData.medium,
+                                              fontSize: 14,
+                                              color: AppThemeData.primary300,
+                                              decoration: TextDecoration.underline,
+                                              decorationColor: AppThemeData.primary300,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
@@ -1384,36 +1414,69 @@ class OrderDetailsScreen extends StatelessWidget {
 
 class OrderTimeCountdown extends StatefulWidget {
   final Timestamp? orderCreatedAt; // الوقت الذي تم فيه إنشاء الطلب
-  OrderTimeCountdown({this.orderCreatedAt});
+  final String? vendorID; // Vendor ID to fetch DeliveryTimeRange
+  OrderTimeCountdown({this.orderCreatedAt, this.vendorID});
 
   @override
   _OrderTimeCountdownState createState() => _OrderTimeCountdownState();
 }
 
 class _OrderTimeCountdownState extends State<OrderTimeCountdown> {
-  late Timer _timer;
+  Timer? _timer;
   late Duration _remainingTime;
+  int _deliveryTimeMinutes = 60; // Default to 1 hour (60 minutes)
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _fetchVendorDeliveryTime();
+  }
 
-    // تأكد من أن `createdAt` غير فارغ وحساب الوقت المتبقي
+  // Fetch vendor DeliveryTimeRange from Firebase
+  Future<void> _fetchVendorDeliveryTime() async {
+    if (widget.vendorID != null && widget.vendorID!.isNotEmpty) {
+      try {
+        VendorModel? vendorModel = await FireStoreUtils.getVendorById(widget.vendorID!);
+        if (vendorModel != null && vendorModel.deliveryTimeRange != null && vendorModel.deliveryTimeRange!.isNotEmpty) {
+          // Parse DeliveryTimeRange (it's a string like "45" meaning 45 minutes)
+          int? parsedTime = int.tryParse(vendorModel.deliveryTimeRange!);
+          if (parsedTime != null && parsedTime > 0) {
+            _deliveryTimeMinutes = parsedTime;
+          }
+        }
+      } catch (e) {
+        // If error, use default 1 hour
+        _deliveryTimeMinutes = 60;
+      }
+    }
+
+    // Calculate remaining time after fetching delivery time
     if (widget.orderCreatedAt != null) {
       _remainingTime = _calculateRemainingTime(widget.orderCreatedAt!);
+      // If time is already expired, set to zero
+      if (_remainingTime.isNegative) {
+        _remainingTime = Duration.zero;
+      }
     } else {
       _remainingTime = Duration.zero;
     }
 
-    // بدء التوقيت التنازلي
-    _timer = Timer.periodic(Duration(seconds: 1), _updateTime);
+    setState(() {
+      _isLoading = false;
+    });
+
+    // بدء التوقيت التنازلي فقط إذا كان هناك وقت متبقي
+    if (_remainingTime.inSeconds > 0) {
+      _timer = Timer.periodic(Duration(seconds: 1), _updateTime);
+    }
   }
 
   // دالة لحساب الوقت المتبقي
   Duration _calculateRemainingTime(Timestamp createdAt) {
     DateTime now = DateTime.now();
     DateTime orderTime = createdAt.toDate(); // تحويل Timestamp إلى DateTime
-    return orderTime.add(Duration(hours: 1)).difference(now); // إضافة ساعة أو المدة التي تحتاجها
+    return orderTime.add(Duration(minutes: _deliveryTimeMinutes)).difference(now); // إضافة المدة من Firebase أو ساعة افتراضية
   }
 
   // دالة لتحديث الوقت كل ثانية
@@ -1423,19 +1486,25 @@ class _OrderTimeCountdownState extends State<OrderTimeCountdown> {
         _remainingTime = _remainingTime - Duration(seconds: 1);
       } else {
         _remainingTime = Duration.zero; // إيقاف التوقيت عند الوصول إلى صفر
-        _timer.cancel(); // إيقاف التايمر
+        _timer?.cancel(); // إيقاف التايمر
       }
     });
   }
 
   @override
   void dispose() {
-    _timer.cancel(); // إيقاف التايمر عند التخلص من الودجت
+    _timer?.cancel(); // إيقاف التايمر عند التخلص من الودجت
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     // تحويل الوقت المتبقي إلى تنسيق مناسب (دقائق وثواني)
     String minutes = (_remainingTime.inMinutes).toString().padLeft(2, '0');
     String seconds = (_remainingTime.inSeconds % 60).toString().padLeft(2, '0');
@@ -1447,7 +1516,7 @@ class _OrderTimeCountdownState extends State<OrderTimeCountdown> {
           // الدائرة المتحركة
           CustomPaint(
             size: Size(100, 100),
-            painter: CountdownPainter(_remainingTime),
+            painter: CountdownPainter(_remainingTime, _deliveryTimeMinutes),
           ),
           // عرض الوقت داخل الدائرة
           if (_remainingTime.inSeconds > 0)
@@ -1478,8 +1547,9 @@ class _OrderTimeCountdownState extends State<OrderTimeCountdown> {
 // CustomPainter لرسم الدائرة المتحركة
 class CountdownPainter extends CustomPainter {
   final Duration remainingTime;
+  final int deliveryTimeMinutes;
 
-  CountdownPainter(this.remainingTime);
+  CountdownPainter(this.remainingTime, this.deliveryTimeMinutes);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1491,8 +1561,9 @@ class CountdownPainter extends CustomPainter {
     // رسم الدائرة الأساسية
     canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2, paint);
 
-    // حساب نسبة الوقت المتبقي
-    double progress = 1.0 - (remainingTime.inSeconds / 3600); // 3600 هو الوقت الكامل (ساعة واحدة)
+    // حساب نسبة الوقت المتبقي - استخدام المدة الفعلية من Firebase
+    int totalSeconds = deliveryTimeMinutes * 60; // تحويل الدقائق إلى ثواني
+    double progress = totalSeconds > 0 ? 1.0 - (remainingTime.inSeconds / totalSeconds) : 0.0;
 
     // تغيير اللون حسب التقدم في العد التنازلي
     Color circleColor;
@@ -1526,5 +1597,146 @@ class CountdownPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return true; // إعادة الرسم كلما تغير الوقت
   }
+}
+
+/// Show QR Code Dialog
+void _showQRCodeDialog(BuildContext context, String orderId, DarkThemeProvider themeChange) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        backgroundColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Title
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Order QR Code".tr,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                      fontFamily: AppThemeData.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey600,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              
+              // Description
+              Text(
+                "Scan this QR code to view order details".tr,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey600,
+                  fontFamily: AppThemeData.regular,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // QR Code
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: QrImageView(
+                  data: orderId,
+                  version: QrVersions.auto,
+                  size: 200.0,
+                  backgroundColor: Colors.white,
+                  errorCorrectionLevel: QrErrorCorrectLevel.H,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Order ID
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppThemeData.primary300.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppThemeData.primary300.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.confirmation_number_outlined,
+                      size: 18,
+                      color: AppThemeData.primary300,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        "Order ID: $orderId",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppThemeData.primary300,
+                          fontFamily: AppThemeData.medium,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Close Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppThemeData.primary300,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    "Close".tr,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
