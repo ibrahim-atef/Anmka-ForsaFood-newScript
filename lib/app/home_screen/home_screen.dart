@@ -387,9 +387,10 @@ class HomeScreen extends StatelessWidget {
                                                         TextSpan(
                                                           children: [
                                                             TextSpan(
-                                                              text: Constant
-                                                                  .selectedLocation
-                                                                  .getFullAddress(),
+                                                              text: (Constant.selectedLocation.address != null && Constant.selectedLocation.address!.isNotEmpty) ||
+                                                                      (Constant.selectedLocation.locality != null && Constant.selectedLocation.locality!.isNotEmpty)
+                                                                  ? Constant.selectedLocation.getFullAddress()
+                                                                  : "Select location".tr,
                                                               style: TextStyle(
                                                                 fontFamily:
                                                                     AppThemeData

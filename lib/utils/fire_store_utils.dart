@@ -668,11 +668,48 @@ class FireStoreUtils {
 
   static Stream<List<VendorModel>> getAllNearestRestaurant(
       {bool? isDining}) async* {
-    print("hereeeee");
+    print("🍕 ========== getAllNearestRestaurant STARTED ==========");
+    print("🍕 getAllNearestRestaurant: isDining = $isDining");
+    
     try {
+      // Check selectedZone
+      if (Constant.selectedZone == null) {
+        print("❌ getAllNearestRestaurant: Constant.selectedZone is NULL!");
+        print("❌ getAllNearestRestaurant: Cannot fetch restaurants without zone");
+        getNearestVendorController = StreamController<List<VendorModel>>.broadcast();
+        getNearestVendorController!.sink.add([]);
+        yield* getNearestVendorController!.stream;
+        return;
+      }
+      
+      print("✅ getAllNearestRestaurant: Constant.selectedZone.id = ${Constant.selectedZone!.id}");
+      print("✅ getAllNearestRestaurant: Constant.selectedZone.name = ${Constant.selectedZone!.name}");
+      
+      // Check selectedLocation
+      if (Constant.selectedLocation.location == null) {
+        print("❌ getAllNearestRestaurant: Constant.selectedLocation.location is NULL!");
+        print("❌ getAllNearestRestaurant: Cannot calculate distance without location");
+        getNearestVendorController = StreamController<List<VendorModel>>.broadcast();
+        getNearestVendorController!.sink.add([]);
+        yield* getNearestVendorController!.stream;
+        return;
+      }
+      
+      print("✅ getAllNearestRestaurant: selectedLocation.latitude = ${Constant.selectedLocation.location!.latitude}");
+      print("✅ getAllNearestRestaurant: selectedLocation.longitude = ${Constant.selectedLocation.location!.longitude}");
+      
+      // Check radius
+      print("🍕 getAllNearestRestaurant: Constant.radius = ${Constant.radius}");
+      
+      // Check subscription settings
+      print("🍕 getAllNearestRestaurant: Constant.isSubscriptionModelApplied = ${Constant.isSubscriptionModelApplied}");
+      print("🍕 getAllNearestRestaurant: Constant.adminCommission?.isEnabled = ${Constant.adminCommission?.isEnabled}");
+      
       getNearestVendorController =
           StreamController<List<VendorModel>>.broadcast();
       List<VendorModel> vendorList = [];
+      
+      // Build query
       Query<Map<String, dynamic>> query = isDining == true
           ? fireStore
               .collection(CollectionName.vendors)
@@ -682,10 +719,16 @@ class FireStoreUtils {
               .collection(CollectionName.vendors)
               .where('zoneId', isEqualTo: Constant.selectedZone!.id.toString());
 
+      print("🍕 getAllNearestRestaurant: Query built - isDining: $isDining, zoneId: ${Constant.selectedZone!.id}");
+
       GeoFirePoint center = Geoflutterfire().point(
           latitude: Constant.selectedLocation.location!.latitude ?? 0.0,
           longitude: Constant.selectedLocation.location!.longitude ?? 0.0);
       String field = 'g';
+
+      print("🍕 getAllNearestRestaurant: GeoFirePoint center created at (${center.latitude}, ${center.longitude})");
+      print("🍕 getAllNearestRestaurant: Searching within radius: ${Constant.radius}km");
+      print("🍕 getAllNearestRestaurant: Field = $field, strictMode = true");
 
       Stream<List<DocumentSnapshot>> stream = Geoflutterfire()
           .collection(collectionRef: query)
@@ -695,38 +738,159 @@ class FireStoreUtils {
               field: field,
               strictMode: true);
 
-      stream.listen((List<DocumentSnapshot> documentList) async {
-        vendorList.clear();
-        for (var document in documentList) {
-          final data = document.data() as Map<String, dynamic>;
-          VendorModel vendorModel = VendorModel.fromJson(data);
-          if ((Constant.isSubscriptionModelApplied == true ||
-                  Constant.adminCommission?.isEnabled == true) &&
-              vendorModel.subscriptionPlan != null) {
-            if (vendorModel.subscriptionTotalOrders == "-1") {
-              vendorList.add(vendorModel);
-            } else {
-              if ((vendorModel.subscriptionExpiryDate != null &&
-                      vendorModel.subscriptionExpiryDate!
-                              .toDate()
-                              .isBefore(DateTime.now()) ==
-                          false) ||
-                  vendorModel.subscriptionPlan?.expiryDay == "-1") {
-                if (vendorModel.subscriptionTotalOrders != '0') {
-                  vendorList.add(vendorModel);
-                }
-              }
+      print("🍕 getAllNearestRestaurant: Stream created, listening for documents...");
+
+      stream.listen(
+        (List<DocumentSnapshot> documentList) async {
+          print("🍕 ========== Stream received ${documentList.length} documents ==========");
+          vendorList.clear();
+          
+          int addedCount = 0;
+          int skippedSubscriptionCount = 0;
+          int skippedLocationCount = 0;
+          int skippedOtherCount = 0;
+          int errorCount = 0;
+          
+          if (documentList.isEmpty) {
+            print("⚠️ getAllNearestRestaurant: documentList is EMPTY!");
+            print("⚠️ This could mean:");
+            print("   1. No restaurants in zoneId: ${Constant.selectedZone!.id}");
+            print("   2. No restaurants within radius: ${Constant.radius}km");
+            print("   3. All restaurants are outside the search radius");
+            if (isDining == true) {
+              print("   4. All restaurants don't have enabledDiveInFuture = true");
             }
-          } else {
-            vendorList.add(vendorModel);
           }
-        }
-        getNearestVendorController!.sink.add(vendorList);
-      });
+          
+          for (var document in documentList) {
+            try {
+              final data = document.data() as Map<String, dynamic>;
+              
+              print("🍕 getAllNearestRestaurant: Processing document ID: ${document.id}");
+              
+              // Check if document has required fields
+              if (!data.containsKey('g') || data['g'] == null) {
+                print("⚠️ getAllNearestRestaurant: Document ${document.id} has no 'g' field (geo location)");
+                skippedLocationCount++;
+                continue;
+              }
+              
+              VendorModel vendorModel = VendorModel.fromJson(data);
+              
+              print("🍕 getAllNearestRestaurant: Restaurant parsed - id=${vendorModel.id}, title=${vendorModel.title}, zoneId=${vendorModel.zoneId}");
+              
+              // Check zone match
+              if (vendorModel.zoneId != Constant.selectedZone!.id.toString()) {
+                print("⚠️ getAllNearestRestaurant: Restaurant ${vendorModel.id} zoneId (${vendorModel.zoneId}) doesn't match selectedZone (${Constant.selectedZone!.id})");
+                skippedOtherCount++;
+                continue;
+              }
+              
+              // Check subscription model
+              bool subscriptionCheckPassed = false;
+              
+              if ((Constant.isSubscriptionModelApplied == true ||
+                      Constant.adminCommission?.isEnabled == true) &&
+                  vendorModel.subscriptionPlan != null) {
+                print("🍕 getAllNearestRestaurant: Restaurant ${vendorModel.id} has subscription plan");
+                print("   - subscriptionTotalOrders: ${vendorModel.subscriptionTotalOrders}");
+                print("   - subscriptionExpiryDate: ${vendorModel.subscriptionExpiryDate?.toDate()}");
+                print("   - subscriptionPlan.expiryDay: ${vendorModel.subscriptionPlan?.expiryDay}");
+                
+                if (vendorModel.subscriptionTotalOrders == "-1") {
+                  print("✅ getAllNearestRestaurant: Restaurant ${vendorModel.id} has unlimited orders");
+                  subscriptionCheckPassed = true;
+                } else {
+                  bool isExpired = false;
+                  if (vendorModel.subscriptionExpiryDate != null) {
+                    isExpired = vendorModel.subscriptionExpiryDate!.toDate().isBefore(DateTime.now());
+                    print("   - Subscription expiry check: ${isExpired ? 'EXPIRED' : 'VALID'} (${vendorModel.subscriptionExpiryDate!.toDate()})");
+                  } else if (vendorModel.subscriptionPlan?.expiryDay != "-1") {
+                    isExpired = true;
+                    print("   - No expiry date but expiryDay != -1, treating as expired");
+                  }
+                  
+                  bool isUnlimitedExpiry = vendorModel.subscriptionPlan?.expiryDay == "-1";
+                  print("   - Is unlimited expiry: $isUnlimitedExpiry");
+                  
+                  if (!isExpired || isUnlimitedExpiry) {
+                    if (vendorModel.subscriptionTotalOrders != '0') {
+                      print("✅ getAllNearestRestaurant: Restaurant ${vendorModel.id} subscription is valid");
+                      subscriptionCheckPassed = true;
+                    } else {
+                      print("⚠️ getAllNearestRestaurant: Restaurant ${vendorModel.id} subscription orders = 0, skipping");
+                      skippedSubscriptionCount++;
+                    }
+                  } else {
+                    print("⚠️ getAllNearestRestaurant: Restaurant ${vendorModel.id} subscription expired, skipping");
+                    skippedSubscriptionCount++;
+                  }
+                }
+              } else {
+                print("✅ getAllNearestRestaurant: Restaurant ${vendorModel.id} has no subscription requirement");
+                subscriptionCheckPassed = true;
+              }
+              
+              if (subscriptionCheckPassed) {
+                vendorList.add(vendorModel);
+                addedCount++;
+                print("✅ getAllNearestRestaurant: Restaurant ${vendorModel.id} ADDED to list (Total: ${vendorList.length})");
+              }
+            } catch (e, stackTrace) {
+              errorCount++;
+              print("❌ getAllNearestRestaurant: Error parsing document ${document.id}: $e");
+              print("❌ Stack trace: $stackTrace");
+            }
+          }
+          
+          print("🍕 ========== Processing complete ==========");
+          print("   ✅ Added: $addedCount restaurants");
+          print("   ⚠️ Skipped (subscription): $skippedSubscriptionCount");
+          print("   ⚠️ Skipped (location): $skippedLocationCount");
+          print("   ⚠️ Skipped (other): $skippedOtherCount");
+          print("   ❌ Errors: $errorCount");
+          print("   📊 Total in vendorList: ${vendorList.length}");
+          print("   📊 Total documents received: ${documentList.length}");
+          
+          if (vendorList.isEmpty && documentList.isNotEmpty) {
+            print("⚠️ getAllNearestRestaurant: vendorList is EMPTY but received ${documentList.length} documents!");
+            print("⚠️ This means all restaurants were filtered out by:");
+            if (skippedSubscriptionCount > 0) {
+              print("   - Subscription checks: $skippedSubscriptionCount");
+            }
+            if (skippedLocationCount > 0) {
+              print("   - Location checks: $skippedLocationCount");
+            }
+            if (skippedOtherCount > 0) {
+              print("   - Other filters: $skippedOtherCount");
+            }
+          }
+          
+          print("🍕 getAllNearestRestaurant: Sending ${vendorList.length} restaurants to stream...");
+          getNearestVendorController!.sink.add(vendorList);
+          print("🍕 getAllNearestRestaurant: Stream updated with ${vendorList.length} restaurants");
+        },
+        onError: (error) {
+          print("❌ getAllNearestRestaurant: Stream ERROR: $error");
+          print("❌ getAllNearestRestaurant: Error type: ${error.runtimeType}");
+          if (error is Error) {
+            print("❌ getAllNearestRestaurant: Stack trace: ${error.stackTrace}");
+          }
+          getNearestVendorController!.sink.addError(error);
+        },
+        cancelOnError: false,
+      );
 
       yield* getNearestVendorController!.stream;
-    } catch (e) {
-      print(e);
+    } catch (e, stackTrace) {
+      print("❌ getAllNearestRestaurant: EXCEPTION caught: $e");
+      print("❌ getAllNearestRestaurant: Exception type: ${e.runtimeType}");
+      print("❌ getAllNearestRestaurant: Stack trace: $stackTrace");
+      
+      // Return empty stream on error
+      getNearestVendorController = StreamController<List<VendorModel>>.broadcast();
+      getNearestVendorController!.sink.add([]);
+      yield* getNearestVendorController!.stream;
     }
   }
 
@@ -1647,17 +1811,71 @@ class FireStoreUtils {
   static Future<bool?> deleteUser() async {
     bool? isDelete;
     try {
+      // Get user ID - prefer Firebase Auth UID, fallback to Constant.userModel.id
+      String userId;
+      try {
+        if (FirebaseAuth.instance.currentUser != null) {
+          userId = FireStoreUtils.getCurrentUid();
+        } else if (Constant.userModel?.id != null && Constant.userModel!.id!.isNotEmpty) {
+          userId = Constant.userModel!.id!;
+        } else {
+          log('FireStoreUtils.deleteUser: No user ID found');
+          return false;
+        }
+      } catch (e) {
+        if (Constant.userModel?.id != null && Constant.userModel!.id!.isNotEmpty) {
+          userId = Constant.userModel!.id!;
+        } else {
+          log('FireStoreUtils.deleteUser: Failed to get user ID: $e');
+          return false;
+        }
+      }
+
+      // Delete user from Firestore first
       await fireStore
           .collection(CollectionName.users)
-          .doc(FireStoreUtils.getCurrentUid())
+          .doc(userId)
           .delete();
+      log('FireStoreUtils.deleteUser: User deleted from Firestore');
 
-      // delete user  from firebase auth
-      await FirebaseAuth.instance.currentUser!.delete().then((value) {
-        isDelete = true;
-      });
+      // Try to delete user from Firebase Auth if exists
+      // Note: This may fail if re-authentication is required
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        try {
+          // Try to delete from Firebase Auth
+          await currentUser.delete();
+          log('FireStoreUtils.deleteUser: User deleted from Firebase Auth');
+        } on FirebaseAuthException catch (e) {
+          // Handle specific Firebase Auth errors
+          if (e.code == 'requires-recent-login') {
+            log('FireStoreUtils.deleteUser: Re-authentication required for Firebase Auth deletion. User data deleted from Firestore.');
+            // User data is already deleted from Firestore, so we continue
+            // We'll just sign out the user
+          } else {
+            log('FireStoreUtils.deleteUser: Firebase Auth deletion error: ${e.code} - ${e.message}');
+            // Continue anyway since Firestore deletion succeeded
+          }
+        } catch (e) {
+          log('FireStoreUtils.deleteUser: Unexpected error deleting from Firebase Auth: $e');
+          // Continue anyway since Firestore deletion succeeded
+        }
+      } else {
+        log('FireStoreUtils.deleteUser: No Firebase Auth user to delete');
+      }
+
+      // Sign out to clear any remaining auth state
+      try {
+        await FirebaseAuth.instance.signOut();
+        log('FireStoreUtils.deleteUser: User signed out successfully');
+      } catch (e) {
+        log('FireStoreUtils.deleteUser: Error signing out: $e');
+      }
+
+      // Consider deletion successful if Firestore deletion succeeded
+      isDelete = true;
     } catch (e, s) {
-      log('FireStoreUtils.firebaseCreateNewUser $e $s');
+      log('FireStoreUtils.deleteUser error: $e $s');
       return false;
     }
     return isDelete;

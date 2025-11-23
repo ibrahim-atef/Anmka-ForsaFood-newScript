@@ -64,24 +64,62 @@ class HomeController extends GetxController {
   RxList<FavouriteModel> favouriteList = <FavouriteModel>[].obs;
 
   getData() async {
-    print("step1");
+    print("🏠 ========== HomeController.getData() STARTED ==========");
     isLoading.value = true;
     getCartData();
-    print("step2");
-
+    
     // selectedOrderTypeValue.value = Preferences.getString(Preferences.foodDeliveryType, defaultValue: "Delivery".tr).tr;
+    print("🏠 HomeController: Getting zones...");
     await getZone();
-    print("step3");
-
+    print("🏠 HomeController: Zones retrieved. selectedZone = ${Constant.selectedZone?.id}, selectedLocation = ${Constant.selectedLocation.location?.latitude},${Constant.selectedLocation.location?.longitude}");
+    
+    if (Constant.selectedZone == null) {
+      print("❌ HomeController: selectedZone is NULL! Cannot fetch restaurants.");
+      isLoading.value = false;
+      return;
+    }
+    
+    if (Constant.selectedLocation.location == null) {
+      print("❌ HomeController: selectedLocation.location is NULL! Cannot fetch restaurants.");
+      isLoading.value = false;
+      return;
+    }
+    
+    print("✅ HomeController: selectedZone.id = ${Constant.selectedZone!.id}");
+    print("✅ HomeController: selectedLocation = (${Constant.selectedLocation.location!.latitude}, ${Constant.selectedLocation.location!.longitude})");
+    print("✅ HomeController: radius = ${Constant.radius}km");
+    
+    print("🏠 HomeController: Starting to listen to getAllNearestRestaurant stream...");
     FireStoreUtils.getAllNearestRestaurant().listen((event) async {
+      print("🏠 HomeController: Received ${event.length} restaurants from stream");
+      
+      if (event.isEmpty) {
+        print("⚠️ HomeController: Stream returned EMPTY list!");
+        print("⚠️ HomeController: This could mean:");
+        print("   1. No restaurants found in selected zone");
+        print("   2. No restaurants within radius");
+        print("   3. All restaurants filtered out by subscription checks");
+      }
+      
       popularRestaurantList.clear();
       newArrivalRestaurantList.clear();
       allNearestRestaurant.clear();
 
+      print("🏠 HomeController: Adding ${event.length} restaurants to lists...");
       allNearestRestaurant.addAll(event);
       newArrivalRestaurantList.addAll(event);
       popularRestaurantList.addAll(event);
+      
+      print("🏠 HomeController: allNearestRestaurant.length = ${allNearestRestaurant.length}");
+      print("🏠 HomeController: newArrivalRestaurantList.length = ${newArrivalRestaurantList.length}");
+      print("🏠 HomeController: popularRestaurantList.length = ${popularRestaurantList.length}");
+      
+      if (allNearestRestaurant.isEmpty) {
+        print("⚠️ HomeController: allNearestRestaurant is EMPTY after adding!");
+        print("⚠️ HomeController: No restaurants will be displayed in RestaurantView");
+      }
 
+      print("🏠 HomeController: Sorting restaurants...");
       popularRestaurantList.sort(
         (a, b) => Constant.calculateReview(
                 reviewCount: b.reviewsCount.toString(),
@@ -128,19 +166,31 @@ class HomeController extends GetxController {
         
         print("📱 Total active stories (within 24h): ${storyList.length}");
       });
+      
+      print("🏠 HomeController: All data processing completed");
+      print("🏠 HomeController: Final allNearestRestaurant.length = ${allNearestRestaurant.length}");
+      print("🏠 HomeController: Final newArrivalRestaurantList.length = ${newArrivalRestaurantList.length}");
+      print("🏠 HomeController: Final popularRestaurantList.length = ${popularRestaurantList.length}");
+      print("🏠 HomeController: Final couponRestaurantList.length = ${couponRestaurantList.length}");
+      
+      if (allNearestRestaurant.isNotEmpty) {
+        print("✅ HomeController: First 3 restaurants:");
+        for (int i = 0; i < allNearestRestaurant.length && i < 3; i++) {
+          print("   $i: id=${allNearestRestaurant[i].id}, title=${allNearestRestaurant[i].title}");
+        }
+      }
+      
+      isLoading.value = false;
+      print("🏠 HomeController: isLoading set to false");
+      update();
+      print("🏠 HomeController: update() called");
+      print("🏠 ========== HomeController.getData() COMPLETED ==========");
+    }, onError: (error) {
+      print("❌ HomeController: Stream ERROR: $error");
+      print("❌ HomeController: Error type: ${error.runtimeType}");
+      isLoading.value = false;
+      update();
     });
-
-    print(allNearestRestaurant);
-    print("allNearestRestaurant");
-    print(newArrivalRestaurantList);
-    print("newArrivalRestaurantList");
-    print(popularRestaurantList);
-    print("popularRestaurantList");
-    print(couponRestaurantList);
-    print("couponRestaurantList");
-    print("step4");
-    update();
-    isLoading.value = false;
   }
 
   getVendorCategory() async {

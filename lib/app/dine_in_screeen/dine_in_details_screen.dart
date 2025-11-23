@@ -316,7 +316,7 @@ class DineInDetailsScreen extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        "${Constant.amountShow(amount: controller.vendorModel.value.restaurantCost)} for two".tr,
+                                        "${Constant.amountShow(amount: controller.vendorModel.value.restaurantCost ?? "0.0")} for two".tr,
                                         textAlign: TextAlign.start,
                                         maxLines: 1,
                                         style: TextStyle(

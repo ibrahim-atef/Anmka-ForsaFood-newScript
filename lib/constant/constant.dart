@@ -120,14 +120,27 @@ class Constant {
   }
   isRTL();
 
+  // Handle null or empty amount
+  if (amount == null || amount.isEmpty || amount.trim().isEmpty) {
+    amount = "0.0";
+  }
+
+  // Try to parse the amount, use 0.0 if parsing fails
+  double? parsedAmount;
+  try {
+    parsedAmount = double.parse(amount.toString());
+  } catch (e) {
+    parsedAmount = 0.0;
+  }
+
   if(rtl){
-return "${amount == null || amount.isEmpty ? "0.0" : double.parse(amount.toString()).toStringAsFixed(currencyModel!.decimalDigits ?? 0)} ج.م";
+    return "${parsedAmount.toStringAsFixed(currencyModel!.decimalDigits ?? 0)} ج.م";
   }
 
     if (currencyModel!.symbolAtRight == true) {
-      return "${double.parse(amount.toString()).toStringAsFixed(currencyModel!.decimalDigits ?? 0)} ${currencyModel!.symbol.toString()}";
+      return "${parsedAmount.toStringAsFixed(currencyModel!.decimalDigits ?? 0)} ${currencyModel!.symbol.toString()}";
     } else {
-      return "${currencyModel!.symbol.toString()} ${amount == null || amount.isEmpty ? "0.0" : double.parse(amount.toString()).toStringAsFixed(currencyModel!.decimalDigits ?? 0)}";
+      return "${currencyModel!.symbol.toString()} ${parsedAmount.toStringAsFixed(currencyModel!.decimalDigits ?? 0)}";
     }
   }
 

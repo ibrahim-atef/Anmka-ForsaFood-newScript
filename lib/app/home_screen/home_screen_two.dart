@@ -372,9 +372,10 @@ class HomeScreenTwo extends StatelessWidget {
                                                       TextSpan(
                                                         children: [
                                                           TextSpan(
-                                                            text: Constant
-                                                                .selectedLocation
-                                                                .getFullAddress(),
+                                                            text: (Constant.selectedLocation.address != null && Constant.selectedLocation.address!.isNotEmpty) ||
+                                                                    (Constant.selectedLocation.locality != null && Constant.selectedLocation.locality!.isNotEmpty)
+                                                                ? Constant.selectedLocation.getFullAddress()
+                                                                : "Select location".tr,
                                                             style: TextStyle(
                                                               fontFamily:
                                                                   AppThemeData
@@ -1361,6 +1362,19 @@ class RestaurantView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print("🏪 RestaurantView: Building widget...");
+    print("🏪 RestaurantView: controller.allNearestRestaurant.length = ${controller.allNearestRestaurant.length}");
+    
+    if (controller.allNearestRestaurant.isEmpty) {
+      print("⚠️ RestaurantView: allNearestRestaurant is EMPTY!");
+      print("⚠️ RestaurantView: No restaurants to display");
+    } else {
+      print("✅ RestaurantView: Will display ${controller.allNearestRestaurant.length} restaurants");
+      for (int i = 0; i < controller.allNearestRestaurant.length && i < 3; i++) {
+        print("   Restaurant $i: id=${controller.allNearestRestaurant[i].id}, title=${controller.allNearestRestaurant[i].title}");
+      }
+    }
+    
     final themeChange = Provider.of<DarkThemeProvider>(context);
     return Container(
       color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
@@ -1390,6 +1404,7 @@ class RestaurantView extends StatelessWidget {
                   ),
                   InkWell(
                     onTap: () {
+                      print("🏪 RestaurantView: 'See all' tapped, navigating with ${controller.allNearestRestaurant.length} restaurants");
                       Get.to(const RestaurantListScreen(), arguments: {
                         "vendorList": controller.allNearestRestaurant,
                         "title": "Best Restaurants".tr
@@ -1415,15 +1430,37 @@ class RestaurantView extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ListView.builder(
+              child: controller.allNearestRestaurant.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Center(
+                        child: Text(
+                          "No restaurants available".tr,
+                          style: TextStyle(
+                            color: themeChange.getThem()
+                                ? AppThemeData.grey400
+                                : AppThemeData.grey600,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
                 shrinkWrap: true,
                 padding: EdgeInsets.zero,
                 physics: const NeverScrollableScrollPhysics(),
                 scrollDirection: Axis.vertical,
                 itemCount: controller.allNearestRestaurant.length,
                 itemBuilder: (BuildContext context, int index) {
+                  if (index >= controller.allNearestRestaurant.length) {
+                    print("⚠️ RestaurantView: Index $index >= length ${controller.allNearestRestaurant.length}");
+                    return const SizedBox.shrink();
+                  }
+                  
                   VendorModel vendorModel =
                       controller.allNearestRestaurant[index];
+                  
+                  print("🏪 RestaurantView: Building item $index: id=${vendorModel.id}, title=${vendorModel.title}");
+                  
                   List<CouponModel> tempList = [];
                   List<double> discountAmountTempList = [];
                   for (var element in controller.couponList) {
@@ -1434,10 +1471,17 @@ class RestaurantView extends StatelessWidget {
                           .add(double.parse(element.discount.toString()));
                     }
                   }
+                  
+                  if (tempList.isNotEmpty) {
+                    print("🏪 RestaurantView: Found ${tempList.length} coupons for restaurant ${vendorModel.id}");
+                  }
+                  
                   return InkWell(
                     onTap: () {
+                      print("🏪 RestaurantView: Restaurant ${vendorModel.id} tapped");
                       if (vendorModel.id != null &&
                           vendorModel.id!.isNotEmpty) {
+                        print("✅ RestaurantView: Navigating to details for restaurant ${vendorModel.id}");
                         Get.to(const RestaurantDetailsScreen(), arguments: {
                           "vendorModel": vendorModel,
                           "vendorId": vendorModel.author
@@ -1447,7 +1491,8 @@ class RestaurantView extends StatelessWidget {
                         });
                       } else {
                         // Handle the case when vendor ID is null or empty
-                        print("Error: Vendor ID is null or empty");
+                        print("❌ RestaurantView: Error: Vendor ID is null or empty");
+                        print("❌ RestaurantView: vendorModel.id = ${vendorModel.id}");
                         // You might want to show a toast or error message here
                       }
                     },

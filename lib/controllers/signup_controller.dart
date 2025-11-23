@@ -72,6 +72,11 @@ class SignupController extends GetxController {
   signUp() async {
     ShowToastDialog.showLoader("Please wait".tr);
     if (type.value == "google" || type.value == "apple" || type.value == "mobileNumber") {
+      // Generate UUID for new user if not already set
+      if (userModel.value.id == null || userModel.value.id!.isEmpty) {
+        userModel.value.id = Constant.getUuid();
+      }
+      
       userModel.value.firstName = firstNameEditingController.value.text.toString();
       userModel.value.lastName = lastNameEditingController.value.text.toString();
       userModel.value.email = emailEditingController.value.text.toString().toLowerCase();
@@ -83,18 +88,31 @@ class SignupController extends GetxController {
       userModel.value.createdAt = Timestamp.now();
       userModel.value.appIdentifier = Platform.isAndroid ? 'android' : 'ios';
 
+      // Get user ID - use Firebase Auth UID if available, otherwise use generated UUID
+      String userId;
+      try {
+        if (FirebaseAuth.instance.currentUser != null) {
+          userId = FireStoreUtils.getCurrentUid();
+        } else {
+          userId = userModel.value.id!;
+        }
+      } catch (e) {
+        userId = userModel.value.id!;
+      }
+
       await FireStoreUtils.getReferralUserByCode(referralCodeEditingController.value.text).then((value) async {
         if (value != null) {
-          ReferralModel ownReferralModel = ReferralModel(id: FireStoreUtils.getCurrentUid(), referralBy: value.id, referralCode: Constant.getReferralCode());
+          ReferralModel ownReferralModel = ReferralModel(id: userId, referralBy: value.id, referralCode: Constant.getReferralCode());
           await FireStoreUtils.referralAdd(ownReferralModel);
         } else {
-          ReferralModel referralModel = ReferralModel(id: FireStoreUtils.getCurrentUid(), referralBy: "", referralCode: Constant.getReferralCode());
+          ReferralModel referralModel = ReferralModel(id: userId, referralBy: "", referralCode: Constant.getReferralCode());
           await FireStoreUtils.referralAdd(referralModel);
         }
       });
 
       await FireStoreUtils.updateUser(userModel.value).then(
         (value) {
+          ShowToastDialog.closeLoader();
           if (userModel.value.shippingAddress != null && userModel.value.shippingAddress!.isNotEmpty) {
             if (userModel.value.shippingAddress!.where((element) => element.isDefault == true).isNotEmpty) {
               Constant.selectedLocation = userModel.value.shippingAddress!.where((element) => element.isDefault == true).single;
@@ -107,7 +125,11 @@ class SignupController extends GetxController {
           }
           ShowToastDialog.showToast("Account create successfully".tr);
         },
-      );
+      ).catchError((error) {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("Failed to create account. Please try again.".tr);
+        debugPrint("Signup error: $error");
+      });
     } else {
       try {
         final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -171,9 +193,9 @@ class SignupController extends GetxController {
         }
       } catch (e) {
         ShowToastDialog.showToast(e.toString());
+      } finally {
+        ShowToastDialog.closeLoader();
       }
     }
-
-    ShowToastDialog.closeLoader();
   }
 }

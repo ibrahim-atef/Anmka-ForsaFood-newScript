@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:customer/app/auth_screen/login_screen.dart';
 import 'package:customer/app/change%20langauge/change_language_screen.dart';
 import 'package:customer/app/chat_screens/driver_inbox_screen.dart';
@@ -410,15 +412,29 @@ launchEmail();
                                                   
                                                   // Normal deletion flow for other accounts
                                                   ShowToastDialog.showLoader("Please wait".tr);
-                                                  await controller.deleteUserFromServer();
+                                                  
+                                                  // Try to delete from server (non-blocking)
+                                                  bool serverDeleted = false;
+                                                  try {
+                                                    serverDeleted = await controller.deleteUserFromServer();
+                                                  } catch (e) {
+                                                    log("Server deletion error (continuing): $e");
+                                                    // Continue with local deletion even if server deletion fails
+                                                  }
+                                                  
+                                                  // Delete from Firestore and Firebase Auth
                                                   await FireStoreUtils.deleteUser().then((value) {
                                                     ShowToastDialog.closeLoader();
                                                     if (value == true) {
                                                       ShowToastDialog.showToast("Account deleted successfully".tr);
                                                       Get.offAll(const LoginScreen());
                                                     } else {
-                                                      ShowToastDialog.showToast("Contact Administrator".tr);
+                                                      ShowToastDialog.showToast("Failed to delete account. Please contact administrator.".tr);
                                                     }
+                                                  }).catchError((error) {
+                                                    ShowToastDialog.closeLoader();
+                                                    log("Account deletion error: $error");
+                                                    ShowToastDialog.showToast("Failed to delete account. Please contact administrator.".tr);
                                                   });
                                                 },
                                                 negativeClick: () {
