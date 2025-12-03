@@ -1,0 +1,67 @@
+SETUP FLUTTER FOOD DELIVERY APP - AI AGENT PROMPT
+===================================================
+
+Project: Anmka-ForsaFood-newScript (Customer App)
+Location: e:\anmka_apps\Anmka-ForsaFood-newScript
+
+REQUIRED VERSIONS (MUST MATCH EXACTLY):
+---------------------------------------
+Flutter: 3.24.3
+Dart: 3.5.3
+Java JDK: 17 (NOT 8, 11, or 21)
+Kotlin: 1.9.10
+Gradle: 8.2.1
+compileSdk: 35
+targetSdk: 35
+minSdk: 23
+NDK: 25.1.8937393
+Firebase BOM: 33.13.0
+AGP: 8.2.1 (settings.gradle) / 8.1.1 (build.gradle)
+Google Services: 4.4.2
+
+SETUP STEPS:
+-----------
+1. Verify Flutter 3.24.3: flutter --version
+   If not, install: fvm install 3.24.3 && fvm use 3.24.3
+
+2. Verify Java 17: java -version (MUST be 17)
+   Set JAVA_HOME to JDK 17 path
+
+3. Set ANDROID_HOME to Android SDK path
+
+4. cd e:\anmka_apps\Anmka-ForsaFood-newScript
+
+5. flutter clean && flutter pub get
+
+6. cd android && ./gradlew clean && ./gradlew --version
+   (Should show Gradle 8.2.1)
+
+7. Verify versions in config files:
+   - android/gradle/wrapper/gradle-wrapper.properties → gradle-8.2.1-all.zip
+   - android/build.gradle → kotlin_version = '1.9.10', AGP 8.1.1
+   - android/app/build.gradle → compileSdk 35, targetSdk 35, NDK 25.1.8937393
+
+8. flutter devices (verify device available)
+
+9. flutter run
+
+CRITICAL FIXES IF ERRORS:
+------------------------
+- Java version error → Use Java 17, set JAVA_HOME
+- Gradle error → Update gradle-wrapper.properties to 8.2.1
+- NDK error → Install NDK 25.1.8937393 via Android Studio SDK Manager
+- compileSdk error → Install Android SDK Platform 35
+- Kotlin error → Set ext.kotlin_version = '1.9.10' in build.gradle
+
+VERIFICATION CHECKLIST:
+----------------------
+✅ Flutter 3.24.3
+✅ Java 17 (JAVA_HOME set)
+✅ Android SDK (ANDROID_HOME set)
+✅ Gradle 8.2.1
+✅ compileSdk 35
+✅ NDK 25.1.8937393 installed
+✅ Device/emulator available
+
+Run these commands in sequence. Report any errors before proceeding.
+

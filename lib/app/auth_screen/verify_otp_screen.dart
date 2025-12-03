@@ -1,0 +1,409 @@
+import 'dart:async';
+
+import 'package:customer/app/auth_screen/login_screen.dart';
+import 'package:customer/app/auth_screen/signup_screen.dart';
+import 'package:customer/app/dash_board_screens/dash_board_screen.dart';
+import 'package:customer/app/location_permission_screen/location_permission_screen.dart';
+import 'package:customer/constant/collection_name.dart';
+import 'package:customer/constant/constant.dart';
+import 'package:customer/constant/show_toast_dialog.dart';
+import 'package:customer/models/user_model.dart';
+import 'package:customer/services/otp_service.dart';
+import 'package:customer/themes/app_them_data.dart';
+import 'package:customer/themes/round_button_fill.dart';
+import 'package:customer/utils/dark_theme_provider.dart';
+import 'package:customer/utils/fire_store_utils.dart';
+import 'package:customer/utils/notification_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:pin_code_fields/pin_code_fields.dart';
+import 'package:provider/provider.dart';
+
+class VerifyOtpScreen extends StatefulWidget {
+  final String phone;
+  final String countryCode;
+
+  const VerifyOtpScreen({
+    super.key,
+    required this.phone,
+    required this.countryCode,
+  });
+
+  @override
+  State<VerifyOtpScreen> createState() => _VerifyOtpScreenState();
+}
+
+class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
+  final TextEditingController _otpController = TextEditingController();
+  final OtpService _otpService = OtpService();
+  bool _isLoading = false;
+  bool _canResend = false;
+  int _resendCountdown = 60;
+  Timer? _resendTimer;
+  Timer? _validityTimer;
+  Duration? _remainingValidity;
+  int _remainingAttempts = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _startResendCountdown();
+    _startValidityTimer();
+    _updateRemainingAttempts();
+  }
+
+  @override
+  void dispose() {
+    _resendTimer?.cancel();
+    _validityTimer?.cancel();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void _startResendCountdown() {
+    _canResend = false;
+    _resendCountdown = 60;
+    _resendTimer?.cancel();
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendCountdown > 0) {
+        setState(() {
+          _resendCountdown--;
+        });
+      } else {
+        setState(() {
+          _canResend = true;
+        });
+        timer.cancel();
+      }
+    });
+  }
+
+  void _startValidityTimer() {
+    _updateValidity();
+    _validityTimer?.cancel();
+    _validityTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _updateValidity();
+    });
+  }
+
+  Future<void> _updateValidity() async {
+    final validity = await _otpService.getRemainingValidity(
+      widget.phone,
+      countryCode: widget.countryCode.replaceFirst('+', ''),
+    );
+    
+    if (mounted) {
+      setState(() {
+        _remainingValidity = validity;
+      });
+      
+      if (validity == null || validity.inSeconds <= 0) {
+        _validityTimer?.cancel();
+      }
+    }
+  }
+
+  Future<void> _updateRemainingAttempts() async {
+    final attempts = await _otpService.getRemainingAttempts(
+      widget.phone,
+      countryCode: widget.countryCode.replaceFirst('+', ''),
+    );
+    
+    if (mounted) {
+      setState(() {
+        _remainingAttempts = attempts;
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (_otpController.text.length != 6) {
+      ShowToastDialog.showToast("Please enter a valid 6-digit OTP".tr);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    ShowToastDialog.showLoader("Verifying OTP...".tr);
+
+    final result = await _otpService.verifyOtp(
+      widget.phone,
+      _otpController.text.trim(),
+      countryCode: widget.countryCode.replaceFirst('+', ''),
+    );
+
+    ShowToastDialog.closeLoader();
+    setState(() {
+      _isLoading = false;
+    });
+
+    await _updateRemainingAttempts();
+
+    if (result == VerifyResult.success) {
+      ShowToastDialog.showToast("Phone verified successfully".tr);
+      
+      // Check if user exists in Firestore
+      final userQuery = await FirebaseFirestore.instance
+          .collection(CollectionName.users)
+          .where('phoneNumber', isEqualTo: widget.phone.replaceFirst(widget.countryCode, ''))
+          .where('countryCode', isEqualTo: widget.countryCode)
+          .limit(1)
+          .get();
+
+      if (userQuery.docs.isNotEmpty) {
+        // Existing user - login
+        final userDoc = userQuery.docs.first;
+        final userModel = UserModel.fromJson(userDoc.data());
+        
+        if (userModel.role == Constant.userRoleCustomer) {
+          if (userModel.active == true) {
+            userModel.fcmToken = await NotificationService.getToken();
+            await FireStoreUtils.updateUser(userModel);
+            
+            if (userModel.shippingAddress != null && userModel.shippingAddress!.isNotEmpty) {
+              if (userModel.shippingAddress!.where((element) => element.isDefault == true).isNotEmpty) {
+                Constant.selectedLocation = userModel.shippingAddress!.where((element) => element.isDefault == true).single;
+              } else {
+                Constant.selectedLocation = userModel.shippingAddress!.first;
+              }
+              Get.offAll(const DashBoardScreen());
+            } else {
+              Get.offAll(const LocationPermissionScreen());
+            }
+          } else {
+            ShowToastDialog.showToast("This user is disabled. Please contact administrator.".tr);
+            Get.offAll(const LoginScreen());
+          }
+        } else {
+          ShowToastDialog.showToast("Invalid user role".tr);
+          Get.offAll(const LoginScreen());
+        }
+      } else {
+        // New user - redirect to signup
+        final userModel = UserModel();
+        userModel.countryCode = widget.countryCode;
+        userModel.phoneNumber = widget.phone.replaceFirst(widget.countryCode, '');
+        userModel.provider = 'phone';
+        
+        Get.off(const SignupScreen(), arguments: {
+          "userModel": userModel,
+          "type": "mobileNumber",
+        });
+      }
+    } else if (result == VerifyResult.expired) {
+      ShowToastDialog.showToast("OTP has expired. Please request a new one.".tr);
+    } else if (result == VerifyResult.invalid) {
+      ShowToastDialog.showToast("Invalid OTP. Please try again.".tr);
+      _otpController.clear();
+    } else if (result == VerifyResult.blocked) {
+      ShowToastDialog.showToast("Too many failed attempts. Please try again after 1 hour.".tr);
+    } else {
+      ShowToastDialog.showToast("An error occurred. Please try again.".tr);
+    }
+  }
+
+  Future<void> _resendOtp() async {
+    if (!_canResend) {
+      ShowToastDialog.showToast("Please wait ${_resendCountdown}s before resending".tr);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    ShowToastDialog.showLoader("Resending OTP...".tr);
+
+    final result = await _otpService.resendOtp(
+      widget.phone,
+      countryCode: widget.countryCode.replaceFirst('+', ''),
+    );
+
+    ShowToastDialog.closeLoader();
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result == SendResult.success) {
+      ShowToastDialog.showToast("OTP resent successfully".tr);
+      _otpController.clear();
+      _startResendCountdown();
+      _startValidityTimer();
+      _updateRemainingAttempts();
+    } else if (result == SendResult.rateLimited) {
+      ShowToastDialog.showToast("Please wait before requesting a new OTP".tr);
+    } else {
+      ShowToastDialog.showToast("Failed to resend OTP. Please try again.".tr);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeChange = Provider.of<DarkThemeProvider>(context);
+    
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
+      ),
+      body: _isLoading
+          ? Constant.loader()
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Verify Your Number 📱".tr,
+                      style: TextStyle(
+                        color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                        fontSize: 22,
+                        fontFamily: AppThemeData.semiBold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Enter the OTP sent to ${widget.countryCode} ${Constant.maskingString(widget.phone.replaceFirst(widget.countryCode, ''), 3)}".tr,
+                      textAlign: TextAlign.start,
+                      style: TextStyle(
+                        color: themeChange.getThem() ? AppThemeData.grey200 : AppThemeData.grey700,
+                        fontSize: 16,
+                        fontFamily: AppThemeData.regular,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Remaining validity timer
+                    if (_remainingValidity != null && _remainingValidity!.inSeconds > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.timer_outlined,
+                              size: 16,
+                              color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey600,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Valid for ${_remainingValidity!.inMinutes}:${(_remainingValidity!.inSeconds % 60).toString().padLeft(2, '0')}".tr,
+                              style: TextStyle(
+                                color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey600,
+                                fontSize: 14,
+                                fontFamily: AppThemeData.regular,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    // Remaining attempts
+                    if (_remainingAttempts < 5)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 16,
+                              color: _remainingAttempts <= 2 ? Colors.red : Colors.orange,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "$_remainingAttempts attempts remaining".tr,
+                              style: TextStyle(
+                                color: _remainingAttempts <= 2 ? Colors.red : Colors.orange,
+                                fontSize: 14,
+                                fontFamily: AppThemeData.medium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 40),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: PinCodeTextField(
+                        length: 6,
+                        appContext: context,
+                        keyboardType: TextInputType.phone,
+                        enablePinAutofill: true,
+                        hintCharacter: "-",
+                        textStyle: TextStyle(
+                          color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                          fontFamily: AppThemeData.regular,
+                        ),
+                        pinTheme: PinTheme(
+                          fieldHeight: 50,
+                          fieldWidth: 50,
+                          inactiveFillColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                          selectedFillColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                          activeFillColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                          selectedColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                          activeColor: themeChange.getThem() ? AppThemeData.primary300 : AppThemeData.primary300,
+                          inactiveColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                          disabledColor: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                          shape: PinCodeFieldShape.box,
+                          errorBorderColor: themeChange.getThem() ? AppThemeData.grey600 : AppThemeData.grey300,
+                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                        ),
+                        cursorColor: AppThemeData.primary300,
+                        enableActiveFill: true,
+                        controller: _otpController,
+                        onCompleted: (v) async {
+                          await _verifyOtp();
+                        },
+                        onChanged: (value) {},
+                      ),
+                    ),
+                    const SizedBox(height: 50),
+                    RoundedButtonFill(
+                      title: "Verify & Next".tr,
+                      color: AppThemeData.primary300,
+                      textColor: AppThemeData.grey50,
+                      isEnabled: !_isLoading,
+                      onPress: _verifyOtp,
+                    ),
+                    const SizedBox(height: 40),
+                    Text.rich(
+                      textAlign: TextAlign.start,
+                      TextSpan(
+                        text: "${'Didn\'t receive any code? '.tr}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                          fontFamily: AppThemeData.medium,
+                          color: themeChange.getThem() ? AppThemeData.grey100 : AppThemeData.grey800,
+                        ),
+                        children: <TextSpan>[
+                          TextSpan(
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = _canResend ? _resendOtp : null,
+                            text: _canResend
+                                ? 'Send Again'.tr
+                                : 'Send Again (${_resendCountdown}s)'.tr,
+                            style: TextStyle(
+                              color: _canResend
+                                  ? (themeChange.getThem() ? AppThemeData.primary300 : AppThemeData.primary300)
+                                  : (themeChange.getThem() ? AppThemeData.grey600 : AppThemeData.grey500),
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                              fontFamily: AppThemeData.medium,
+                              decoration: _canResend ? TextDecoration.underline : TextDecoration.none,
+                              decorationColor: AppThemeData.primary300,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}

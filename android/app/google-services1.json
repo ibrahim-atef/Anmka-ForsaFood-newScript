@@ -1,0 +1,83 @@
+{
+  "project_info": {
+    "project_number": "780002452262",
+    "firebase_url": "https://forsa-food-b6b50-default-rtdb.firebaseio.com",
+    "project_id": "forsa-food-b6b50",
+    "storage_bucket": "forsa-food-b6b50.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:c75e10994b5d7e20bd17e7",
+        "android_client_info": {
+          "package_name": "com.anmka.forsa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-ubc6rfr61tun2m3uivc0i5f81s5r30lb.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.foodies.customer.ios"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:2b26add69a229c58bd17e7",
+        "android_client_info": {
+          "package_name": "com.foodies.customer.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-ubc6rfr61tun2m3uivc0i5f81s5r30lb.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.foodies.customer.ios"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

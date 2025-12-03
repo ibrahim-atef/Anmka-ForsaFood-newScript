@@ -1,0 +1,311 @@
+{
+  "project_info": {
+    "project_number": "780002452262",
+    "firebase_url": "https://forsa-food-b6b50-default-rtdb.firebaseio.com",
+    "project_id": "forsa-food-b6b50",
+    "storage_bucket": "forsa-food-b6b50.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:c75e10994b5d7e20bd17e7",
+        "android_client_info": {
+          "package_name": "com.anmka.forsa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-bip4doo7ek02mus1avsb3t5nv9uf7256.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anmka.forsa",
+            "certificate_hash": "418e363884a07cd7fc021b06e1d772f24f84d5d4"
+          }
+        },
+        {
+          "client_id": "780002452262-q2h0upaicvhft3c0pe4fbc9it79l8feh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anmka.forsa",
+            "certificate_hash": "59fa16da36eae8ae7ae6ff803911e2f91e893c25"
+          }
+        },
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-4tca41qlu27jah8j281p6a6c13s2vr21.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anmka.forsaaap"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:c79dc7a650236d2abd17e7",
+        "android_client_info": {
+          "package_name": "com.anmka.forsaaap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-69v9380gdn29fn8isdbto4pse9vdc4rc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anmka.forsaaap",
+            "certificate_hash": "59fa16da36eae8ae7ae6ff803911e2f91e893c25"
+          }
+        },
+        {
+          "client_id": "780002452262-qq9f7f8fmoskrcpc2f86nsvgmtag6art.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anmka.forsaaap",
+            "certificate_hash": "c93b5744d06f4618a1d14b890c8e77ffc163da35"
+          }
+        },
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-4tca41qlu27jah8j281p6a6c13s2vr21.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anmka.forsaaap"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:ff71ef6dfb70cedebd17e7",
+        "android_client_info": {
+          "package_name": "com.anmka.forsadriver"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-4tca41qlu27jah8j281p6a6c13s2vr21.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anmka.forsaaap"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:6c3c9bdd957a2bd6bd17e7",
+        "android_client_info": {
+          "package_name": "com.anmka.forsafeedaap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-4tca41qlu27jah8j281p6a6c13s2vr21.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anmka.forsaaap"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:0f1b4fb8cfab2445bd17e7",
+        "android_client_info": {
+          "package_name": "com.anmka.forsarestaurant"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-k4tbvdj0k7fvsp984loc628m989ujd52.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.anmka.forsarestaurant",
+            "certificate_hash": "418e363884a07cd7fc021b06e1d772f24f84d5d4"
+          }
+        },
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-4tca41qlu27jah8j281p6a6c13s2vr21.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anmka.forsaaap"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:2b26add69a229c58bd17e7",
+        "android_client_info": {
+          "package_name": "com.foodies.customer.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-gqg46t1a7mnh713oo7ae17o53p1s4ngc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.foodies.customer.android",
+            "certificate_hash": "59fa16da36eae8ae7ae6ff803911e2f91e893c25"
+          }
+        },
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-4tca41qlu27jah8j281p6a6c13s2vr21.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anmka.forsaaap"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:780002452262:android:df59f684edaeaa1dbd17e7",
+        "android_client_info": {
+          "package_name": "com.foodies.restaurant.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtP-urzAJN4BNJJr9m0O91pM1fqo4Vnbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "780002452262-0jmlfhi8t2aqu70fpbcknfq41qetpis8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "780002452262-4tca41qlu27jah8j281p6a6c13s2vr21.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.anmka.forsaaap"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

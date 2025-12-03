@@ -1,0 +1,236 @@
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:country_code_picker/country_code_picker.dart';
+import 'package:customer/app/splash_screen.dart';
+import 'package:customer/constant/constant.dart';
+import 'package:customer/controllers/global_setting_controller.dart';
+import 'package:customer/firebase_options.dart';
+import 'package:customer/models/language_model.dart';
+import 'package:customer/services/database_helper.dart';
+import 'package:customer/services/localization_service.dart';
+import 'package:customer/themes/styles.dart';
+import 'package:customer/utils/dark_theme_provider.dart';
+import 'package:customer/utils/preferences.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    name: 'default',
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await Firebase.initializeApp(
+    name: 'stagging',
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // await FirebaseAppCheck.instance.activate(
+  //   webProvider: ReCaptchaV3Provider('recaptcha-v3-site-key'),
+  //   androidProvider: AndroidProvider.playIntegrity,
+  //   appleProvider: AppleProvider.appAttest,
+  // );
+
+  await FirebaseAppCheck.instance.activate(
+    // webProvider: ReCaptchaV3Provider('A2274CA0-A5D0-4B6D-83B1-32F13A07354B'),
+    androidProvider: AndroidProvider.playIntegrity,  // وضع التصحيح أثناء التطوير
+    appleProvider: AppleProvider.appAttest,
+  );
+
+  // FirebaseMessaging.instance.getToken().then((value) {
+  //   print('token : ${value}');
+  // });
+
+  DatabaseHelper.instance;
+  await Preferences.initPref();
+  await addSampleBranchToVendor('LDsmHVuL2WlDiGR70clw', 'sample_branch_id1');
+  runApp(
+    const MyApp(),
+  );
+}
+Future<void> addSampleBranchToVendor(String vendorId, String branchId) async {
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+  // Sample static data for the new branch (you can update fields as needed)
+  final Map<String, dynamic> branchData = {
+    "adminCommission": {"commissionType": "Percent", "fix_commission": 12},
+    "isEnabled": true,
+    "author": "GvxDSoJLpJfD2Qzo6pQoFBXZfR82",
+    "authorName": "Ibrahim Atef",
+    "authorProfilePic": "https://firebasestorage.googleapis.com/v0/b/forsa-food-b6b50.firebasestorage.app/o/images%2F486377603_3993161747639595_3036452817294954703_n_1759320070818.jpg?alt=media&token=970a525c-8603-42c5-aaa9-67a98d86abb5",
+    "categoryID": "653f69191f132",
+    "categoryTitle": "Japanese",
+    "closeDineTime": "",
+    "coordinates": const GeoPoint(31.04, 31.38),
+    "countryCode": "93",
+    "createdAt": FieldValue.serverTimestamp(),
+    "delivery_time_range": "",
+    "description": "Sample branch description for testing.",
+    "enabledDiveInFuture": false,
+    "filters": {
+      "Free Wi-Fi": "No",
+      "Good for Breakfast": "No",
+      "Good for Dinner": "No",
+      "Good for Lunch": "No",
+      "Live Music": "No",
+      "Outdoor Seating": "No",
+      "Takes Reservations": "No",
+      "Vegetarian Friendly": "No",
+    },
+    "geohash": "stw2d4djng",
+    "geopoint": const GeoPoint(31.04, 31.38),
+    "hidephotos": false,
+    "latitude": 31.04,
+    "longitude": 31.38,
+    "location": "Egypt",
+    "openDineTime": "",
+    "phonenumber": "32212121",
+    "photo": null,
+    "photos": [],
+    "restaurantCost": "",
+    "restaurantMenuPhotos": [],
+    "reststatus": true,
+    "specialDiscount": [],
+    "specialDiscountEnable": false,
+    "subscriptionExpiryDate": null,
+    "subscriptionPlanId": "J0RwvxCWhZzQQD7Kc2Ll",
+    "subscriptionTotalOrders": "-1",
+    "subscription_plan": {
+      "id": "J0RwvxCWhZzQQD7Kc2Ll",
+      "name": "Commission Base Plan",
+      "title": "test a",
+      "price": "0",
+      "type": "free",
+      "isEnable": true,
+      "itemLimit": "-1",
+      "orderLimit": "-1",
+      "place": "0",
+      "description": "Commission apply per order",
+      "image": "https://firebasestorage.googleapis.com/v0/b/foodies-3c1d9.appspot.com/o/subscription%2Fic_sub_1.png?alt=media&token=a93a344b-6e58-4443-9e15-b2417aa16ff8",
+      "plan_points": [
+        "Access to all features in the restaurant panel.",
+        "Interaction with users through the app.",
+        "Easy to chat",
+        "Easy to make QR code"
+      ],
+      "workingHours": [
+        {"day": "Monday", "timeslot": []},
+        {"day": "Tuesday", "timeslot": []},
+        {"day": "Wednesday", "timeslot": []},
+        {"day": "Thursday", "timeslot": []},
+        {"day": "Friday", "timeslot": []},
+        {"day": "Saturday", "timeslot": []},
+        {"day": "Sunday", "timeslot": []},
+      ],
+      "expiryDay": "-1"
+    },
+    "features": {
+      "chat": true,
+      "createStory": true,
+      "dineIn": true,
+      "qrCodeGenerate": true,
+      "restaurantMobileApp": true,
+    },
+    "workingHours": [
+      {"day": "Monday", "timeslot": []},
+      {"day": "Tuesday", "timeslot": []},
+      {"day": "Wednesday", "timeslot": []},
+      {"day": "Thursday", "timeslot": []},
+      {"day": "Friday", "timeslot": []},
+      {"day": "Saturday", "timeslot": []},
+      {"day": "Sunday", "timeslot": []},
+    ],
+    "zoneId": "wjmdEiZwPmoqqRvcr7b7"
+    // Add more fields as needed...
+  };
+
+  await firestore
+      .collection('vendors')
+      .doc(vendorId)
+      .collection('branches')
+      .doc(branchId)
+      .set(branchData);
+}
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  DarkThemeProvider themeChangeProvider = DarkThemeProvider();
+
+  @override
+  void initState() {
+    getCurrentAppTheme();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Preferences.getString(Preferences.languageCodeKey).toString().isNotEmpty) {
+        LanguageModel languageModel = Constant.getLanguage();
+        LocalizationService().changeLocale(languageModel.slug.toString());
+      } else {
+        LanguageModel languageModel = LanguageModel(slug: "en", isRtl: false, title: "English");
+        Preferences.setString(Preferences.languageCodeKey, jsonEncode(languageModel.toJson()));
+      }
+    });
+    super.initState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    getCurrentAppTheme();
+  }
+
+  void getCurrentAppTheme() async {
+    themeChangeProvider.darkTheme = await themeChangeProvider.darkThemePreference.getTheme();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) {
+        return themeChangeProvider;
+      },
+      child: Consumer<DarkThemeProvider>(
+        builder: (context, value, child) {
+          return GetMaterialApp(
+            title: 'Forsa Feed'.tr,
+            debugShowCheckedModeBanner: false,
+            theme: Styles.themeData(
+                themeChangeProvider.darkTheme == 0
+                    ? true
+                    : themeChangeProvider.darkTheme == 1
+                        ? false
+                        : false,
+                context),
+            localizationsDelegates: const [
+              CountryLocalizations.delegate,
+            ],
+            locale: LocalizationService.locale,
+            fallbackLocale: LocalizationService.locale,
+            translations: LocalizationService(),
+            builder: EasyLoading.init(),
+            home: GetBuilder<GlobalSettingController>(
+              init: GlobalSettingController(),
+              builder: (context) {
+                return const SplashScreen();
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}

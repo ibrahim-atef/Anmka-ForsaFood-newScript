@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Users/mrwan/development/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/mrwan/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/mrwan/Desktop/Anmka/Anmka-ForsaFood-newScript-1/android/app/.cxx/Debug/6l464z65/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/mrwan/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/mrwan/Desktop/Anmka/Anmka-ForsaFood-newScript-1/android/app/.cxx/Debug/6l464z65/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}
